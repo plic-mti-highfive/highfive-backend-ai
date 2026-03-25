@@ -1,0 +1,135 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main", "dev"]
+  pull_request:
+    branches: ["main", "dev"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ==========================================
+  # 1. CI : Linter et Tests
+  # ==========================================
+  test:
+    name: Lint & Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run linter
+        run: uv run ruff check src/ --fix
+
+      - name: Run tests and generate JUnit report
+        run: uv run pytest --junit-xml=junit.xml --cov=src --cov-report=xml
+        env:
+          ENV: dev
+          JWT_SECRET: secret-de-test
+
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Pytest Test Results
+          path: "junit.xml"
+          reporter: jest-junit
+
+      - name: Generate coverage report
+        run: uv run pytest --cov=src --cov-report=html --cov-report=term
+        env:
+          ENV: dev
+          JWT_SECRET: secret-de-test
+
+      - name: Upload coverage as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/
+          retention-days: 7
+
+  # ==========================================
+  # 2. CD : Build & Push Docker Image
+  # ==========================================
+  build-and-push:
+    name: Build & Push Docker Image
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from CHANGELOG
+        id: version
+        run: |
+          VERSION=$(grep -oP '## \[\K[0-9.]+' CHANGELOG.md | head -1)
+          if [ -z "$VERSION" ]; then VERSION="unversioned"; fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Lowercase image name
+        run: |
+          echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev')
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}
+          tags: |
+            # Tag 'latest' uniquement sur main
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            # Tag de la version du changelog sur main
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.ref == 'refs/heads/main' }}
+            # Tag 'dev' pour la branche dev
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
+            # Tag basé sur le numéro de PR (ex: pr-42)
+            type=ref,event=pr
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+          secrets: |
+            github_token=${{ secrets.GITHUB_TOKEN }}
