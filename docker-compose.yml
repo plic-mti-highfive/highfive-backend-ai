@@ -7,7 +7,27 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DATABASE_URI: postgresql+asyncpg://admin:admin@db:5432/highfive
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
     command: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    depends_on:
+      - db
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: highfive_backend_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: highfive
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
