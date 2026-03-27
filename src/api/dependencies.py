@@ -1,9 +1,14 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.security import decode_jwt
+from src.infrastructure.database import get_db
+from src.repositories.embedding_repository import EmbeddingRepository
 
 security_scheme = HTTPBearer()
+
+# --- AUTH ---
 
 
 async def get_current_user(
@@ -21,3 +26,13 @@ async def get_current_user(
         )
 
     return user_payload
+
+
+# --- REPOSITORIES ---
+
+
+def get_embedding_repository(db: AsyncSession = Depends(get_db)) -> EmbeddingRepository:
+    """
+    Dependency that provides an instance of the EmbeddingRepository with the database session.
+    """
+    return EmbeddingRepository(db)
