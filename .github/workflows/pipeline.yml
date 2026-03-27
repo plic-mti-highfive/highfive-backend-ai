@@ -22,6 +22,21 @@ jobs:
       checks: write
       pull-requests: write
 
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: highfive
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,6 +60,7 @@ jobs:
         env:
           ENV: dev
           JWT_SECRET: secret-de-test
+          DATABASE_URL: postgresql+asyncpg://admin:admin@localhost:5432/highfive
 
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
@@ -59,6 +75,7 @@ jobs:
         env:
           ENV: dev
           JWT_SECRET: secret-de-test
+          DATABASE_URL: postgresql+asyncpg://admin:admin@localhost:5432/highfive
 
       - name: Upload coverage as artifact
         uses: actions/upload-artifact@v4
