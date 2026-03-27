@@ -15,7 +15,7 @@ class EntityType(str, enum.Enum):
     TICKET = "TICKET"
 
 
-class ProjectEmbedding(Base):
+class Embedding(Base):
     __tablename__ = "embeddings"
 
     # id UUID PK
