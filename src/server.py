@@ -6,6 +6,7 @@ from src.core.middlewares import TimingMiddleware
 
 
 def create_app() -> FastAPI:
+    print(f"Creating FastAPI app version {settings.VERSION} in {settings.ENV} environment")
     app = FastAPI(
         title="HighFive! AI API",
         description="AI microservice for HighFive!",
