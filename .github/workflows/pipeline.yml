@@ -59,13 +59,14 @@ jobs:
         run: uv run alembic upgrade head
         env:
           ENVIRONMENT: testing
+          JWT_SECRET: secret_key
           DATABASE_URL: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
 
       - name: Run tests and generate JUnit report
         run: uv run pytest --junit-xml=junit.xml --cov=src --cov-report=xml
         env:
           ENV: dev
-          JWT_SECRET: secret-de-test
+          JWT_SECRET: secret_key
           DATABASE_URL: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
 
       - name: Publish Test Report
