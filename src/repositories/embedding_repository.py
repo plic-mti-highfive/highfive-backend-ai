@@ -29,7 +29,10 @@ class EmbeddingRepository:
         return db_obj
 
     async def get_by_entity(self, entity_id: uuid.UUID) -> Embedding | None:
-        """Get an embedding by entity_id for the current tenant. RLS will enforce tenant_id isolation."""
+        """Get an embedding by entity_id for the current tenant.
+
+        RLS will enforce tenant_id isolation.
+        """
         stmt = select(Embedding).where(Embedding.entity_id == entity_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
