@@ -60,14 +60,14 @@ jobs:
         env:
           ENVIRONMENT: testing
           JWT_SECRET: secret_key
-          DATABASE_URL: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
 
       - name: Run tests and generate JUnit report
         run: uv run pytest --junit-xml=junit.xml --cov=src --cov-report=xml
         env:
           ENV: dev
           JWT_SECRET: secret_key
-          DATABASE_URL: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
 
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
@@ -82,7 +82,7 @@ jobs:
         env:
           ENV: dev
           JWT_SECRET: secret-de-test
-          DATABASE_URL: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
 
       - name: Upload coverage as artifact
         uses: actions/upload-artifact@v4
