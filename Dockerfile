@@ -12,7 +12,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY CHANGELOG.md ./
-ARG VERSION
+ARG VERSION=undefined
 ENV VERSION=${VERSION}
 
 COPY main.py ./
