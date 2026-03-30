@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database import set_tenant_context
@@ -63,8 +64,10 @@ async def test_rls_isolation():
     # Try to access with tenant 2 in second session
     async with TestingSessionLocal() as session2:
         await set_tenant_context(session2, tenant2_id)
-        repo2 = EmbeddingRepository(session2, tenant2_id)
 
+        await session2.execute(text("SET ROLE api_tester"))
+
+        repo2 = EmbeddingRepository(session2, tenant2_id)
         fetched = await repo2.get_by_entity(entity_id=entity_id)
 
         assert fetched is None, "RLS failed: Tenant 2 should not be able to read Tenant 1's data!"

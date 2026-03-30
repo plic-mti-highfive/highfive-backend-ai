@@ -1,4 +1,5 @@
 import pytest_asyncio
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -11,7 +12,17 @@ TestingSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expir
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def verify_db_ready():
     async with engine.begin() as conn:
-        pass
+        await conn.execute(
+            text("""
+            DO $$ 
+            BEGIN 
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'api_tester') THEN 
+                    CREATE ROLE api_tester NOLOGIN; 
+                END IF; 
+            END $$;
+        """)
+        )
+        await conn.execute(text("GRANT ALL ON TABLE embeddings TO api_tester;"))
     yield
 
 
