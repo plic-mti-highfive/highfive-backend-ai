@@ -21,6 +21,7 @@ def create_app() -> FastAPI:
         description="AI microservice for HighFive!",
         version=settings.VERSION,
         lifespan=lifespan,
+        root_path="/ai",
     )
 
     app.add_middleware(TimingMiddleware)
