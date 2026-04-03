@@ -7,8 +7,6 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    environment:
-      DATABASE_URI: postgresql+asyncpg://admin:admin@db:5432/highfive
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
@@ -19,13 +17,13 @@ services:
     container_name: dev_highfive_backend_db
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "5434:5432"
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: highfive
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - dev_ai_pgdata:/var/lib/postgresql/data
 
 volumes:
-  pgdata:
+  dev_ai_pgdata:

@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.infrastructure.database import set_tenant_context
-from src.models.embedding import EntityType
+from src.models.embedding import EntityType, VectorPurpose
 from src.repositories.embedding_repository import EmbeddingRepository
 from tests.conftest import TestingSessionLocal
 
@@ -24,7 +24,11 @@ async def test_create_and_get_embedding(db_session: AsyncSession):
     vector_data = [0.1] * 1536
 
     created_embedding = await repo.create(
-        entity_type=entity_type, entity_id=entity_id, vector_data=vector_data
+        entity_type=entity_type,
+        entity_id=entity_id,
+        vector_data=vector_data,
+        vector_purpose=VectorPurpose.IDENTITY,
+        payload_metadata={},
     )
 
     assert created_embedding.id is not None
@@ -56,7 +60,11 @@ async def test_rls_isolation():
         vector_data = [0.1] * 1536
 
         created_embedding = await repo1.create(
-            entity_type=EntityType.USER, entity_id=entity_id, vector_data=vector_data
+            entity_type=EntityType.USER,
+            entity_id=entity_id,
+            vector_data=vector_data,
+            vector_purpose=VectorPurpose.IDENTITY,
+            payload_metadata={},
         )
         assert created_embedding.tenant_id == tenant1_id
         await session1.commit()
