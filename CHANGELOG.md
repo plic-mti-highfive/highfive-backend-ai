@@ -42,6 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Health route mise à jour**
   - Endpoint enrichi avec plus d'informations
   - Tests pour health check
+- **Matchmaking API**
+  - Route d'API pour la recherche de matchs basée sur embeddings
+  - Service de matchmaking avec logique d'appariement utilisateurs-projets
+  - Tests unitaires pour l'API et le service
+  - Intégration des dépendances d'injection
 
 ### Changed
 
