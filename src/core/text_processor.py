@@ -14,23 +14,21 @@ class TextProcessor:
         return clean_text.strip()
 
     @staticmethod
-    def build_identity_text(bio: str | None, skills: list[str]) -> str:
-        """Builds the semantic text for a user profile (IDENTITY)."""
-        clean_bio = TextProcessor.clean_html(bio)
-        parts = ["Profil étudiant."]
-        if clean_bio:
-            parts.append(f"Biographie : {clean_bio}")
-        if skills:
-            parts.append(f"Compétences maîtrisées : {', '.join(skills)}.")
-        return " ".join(parts)
+    def build_text_from_schema(payload: dict, schema_mapping: dict) -> str:
+        """
+        Construct a text by applying the schema mapping to the payload.
+        The schema_mapping defines how to format each field in the payload into text.
+        Ex: schema = {"bio": "Biographie : {}", "skills": "Compétences : {}"}
+        """
+        parts = []
+        for key, template in schema_mapping.items():
+            value = payload.get(key)
+            if value:
+                if isinstance(value, list):
+                    value = ", ".join(str(v) for v in value)
 
-    @staticmethod
-    def build_content_text(title: str, description: str | None) -> str:
-        """Builds the semantic text for a project or ticket (CONTENT)."""
-        clean_title = TextProcessor.clean_html(title)
-        clean_desc = TextProcessor.clean_html(description)
+                if isinstance(value, str):
+                    value = TextProcessor.clean_html(value)
 
-        parts = [f"Titre : {clean_title}."]
-        if clean_desc:
-            parts.append(f"Description : {clean_desc}")
+                parts.append(template.format(value))
         return " ".join(parts)

@@ -11,24 +11,28 @@ from src.server import create_app
 
 app = create_app()
 
-TEST_TENANT_ID = uuid.uuid4()
-TEST_USER_PAYLOAD = {"sub": str(uuid.uuid4()), "tenant_id": str(TEST_TENANT_ID)}
 
-
-def override_get_current_user():
-    return TEST_USER_PAYLOAD
-
-
-app.dependency_overrides[get_current_user] = override_get_current_user
+@pytest.fixture(autouse=True)
+def setup_test_auth(test_tenant_id):
+    """
+    Set up auth for each test with unique tenant_id.
+    This ensures test isolation even if data persists in DB.
+    """
+    def override_get_current_user():
+        return {"sub": str(uuid.uuid4()), "tenant_id": str(test_tenant_id)}
+    
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio
-async def test_get_projects_for_user_api(db_session):
+async def test_get_projects_for_user_api(db_session, test_tenant_id):
     user_id = uuid.uuid4()
     project_id = uuid.uuid4()
 
-    await set_tenant_context(db_session, TEST_TENANT_ID)
-    repo = EmbeddingRepository(db_session, TEST_TENANT_ID)
+    await set_tenant_context(db_session, test_tenant_id)
+    repo = EmbeddingRepository(db_session, test_tenant_id)
 
     vector = [0.5] * 1536
     await repo.create(
@@ -45,7 +49,7 @@ async def test_get_projects_for_user_api(db_session):
         vector_purpose=VectorPurpose.CONTENT,
         payload_metadata={},
     )
-    await db_session.commit()
+    await db_session.commit()  # Necessary for AsyncClient to see data
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"

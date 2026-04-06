@@ -11,16 +11,15 @@ from src.services.matchmaking_service import MatchmakingService
 
 
 @pytest.mark.asyncio
-async def test_get_project_recommendations_integration(db_session: AsyncSession):
-    tenant_id = uuid.uuid4()
+async def test_get_project_recommendations_integration(db_session: AsyncSession, test_tenant_id):
     user_id = uuid.uuid4()
     perfect_match_project_id = uuid.uuid4()
     bad_match_project_id = uuid.uuid4()
 
-    await set_tenant_context(db_session, tenant_id)
+    await set_tenant_context(db_session, test_tenant_id)
     await db_session.execute(text("SET ROLE api_tester"))
 
-    repo = EmbeddingRepository(db_session, tenant_id)
+    repo = EmbeddingRepository(db_session, test_tenant_id)
     service = MatchmakingService(repo)
 
     user_vector = [1.0] + [0.0] * 1535

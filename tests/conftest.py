@@ -1,3 +1,6 @@
+import uuid
+
+import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -26,10 +29,19 @@ async def verify_db_ready():
     yield
 
 
+@pytest.fixture()
+def test_tenant_id():
+    """Generate unique tenant_id for each test (isolation)."""
+    return uuid.uuid4()
+
+
 @pytest_asyncio.fixture()
-async def db_session():
+async def db_session(test_tenant_id):
+    """
+    DB session for unit tests.
+    IMPORTANT: Tests should NOT call commit() - use only flush().
+    Rollback at end ensures zero data persists.
+    """
     async with TestingSessionLocal() as session:
         yield session
-        await session.execute(text("DELETE FROM embeddings;"))
-        await session.commit()
         await session.rollback()
