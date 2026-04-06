@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.security import decode_jwt
 from src.infrastructure.database import get_db, set_tenant_context
 from src.repositories.embedding_repository import EmbeddingRepository
+from src.services.matchmaking_service import MatchmakingService
 
 security_scheme = HTTPBearer()
 
@@ -62,3 +63,15 @@ async def get_embedding_repository(
     """
     await set_tenant_context(db, tenant_id)
     return EmbeddingRepository(db, tenant_id)
+
+
+# --- SERVICES ---
+
+
+async def get_matchmaking_service(
+    repo: EmbeddingRepository = Depends(get_embedding_repository),
+) -> MatchmakingService:
+    """
+    Dependency that provides an instance of the MatchmakingService with the required repository.
+    """
+    return MatchmakingService(repo)

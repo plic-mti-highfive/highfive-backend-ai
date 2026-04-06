@@ -30,4 +30,7 @@ async def verify_db_ready():
 async def db_session():
     async with TestingSessionLocal() as session:
         yield session
+        # Clean up test data by deleting all embeddings
+        await session.execute(text("DELETE FROM embeddings;"))
+        await session.commit()
         await session.rollback()
