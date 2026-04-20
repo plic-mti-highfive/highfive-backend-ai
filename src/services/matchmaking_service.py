@@ -1,7 +1,10 @@
 import uuid
 
+from src.core.logger import get_logger
 from src.models.embedding import EntityType, VectorPurpose
 from src.repositories.embedding_repository import EmbeddingRepository
+
+logger = get_logger(__name__)
 
 
 class MatchmakingService:
@@ -15,20 +18,25 @@ class MatchmakingService:
         Get project recommendations for a user based on vector similarity between the user's
         IDENTITY vector and projects' CONTENT vectors.
         """
+        logger.info(f"Fetching project recommendations for user {user_id} (limit: {limit})")
         user_vector_obj = await self.embedding_repo.get_by_entity_and_purpose(
             entity_id=user_id, purpose=VectorPurpose.IDENTITY
         )
 
         if not user_vector_obj:
+            logger.warning(
+                f"No identity vector found for user {user_id}, returning empty recommendations"
+            )
             return []
 
+        logger.debug("User identity vector retrieved, searching for similar projects")
         closest_projects = await self.embedding_repo.find_nearest_neighbors(
             target_vector=user_vector_obj.vector_data,
             target_entity_type=EntityType.PROJECT,
             target_purpose=VectorPurpose.CONTENT,
             limit=limit,
         )
-
+        logger.info(f"Found {len(closest_projects)} project recommendations for user {user_id}")
         return [project.entity_id for project in closest_projects]
 
     async def get_user_recommendations_for_project(
@@ -38,18 +46,23 @@ class MatchmakingService:
         Get user recommendations for a project based on vector similarity between the project's
         CONTENT vector and users' IDENTITY vectors.
         """
+        logger.info(f"Fetching user recommendations for project {project_id} (limit: {limit})")
         project_vector_obj = await self.embedding_repo.get_by_entity_and_purpose(
             entity_id=project_id, purpose=VectorPurpose.CONTENT
         )
 
         if not project_vector_obj:
+            logger.warning(
+                f"No content vector found for project {project_id}, returning empty recommendations"
+            )
             return []
 
+        logger.debug("Project content vector retrieved, searching for similar users")
         closest_users = await self.embedding_repo.find_nearest_neighbors(
             target_vector=project_vector_obj.vector_data,
             target_entity_type=EntityType.USER,
             target_purpose=VectorPurpose.IDENTITY,
             limit=limit,
         )
-
+        logger.info(f"Found {len(closest_users)} user recommendations for project {project_id}")
         return [user.entity_id for user in closest_users]

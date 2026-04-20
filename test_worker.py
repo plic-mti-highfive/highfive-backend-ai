@@ -27,7 +27,25 @@ async def simulate_nestjs():
         },
     )
 
+    user_queue = Queue("high_priority", {"connection": redis_opts})
+
+    user_id = str(uuid.uuid4())
+
+    await user_queue.add(
+        "update_user_identity",
+        {
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "payload": {
+                "name": "Alice Smith",
+                "bio": "Développeuse passionnée par les systèmes distribués et l'IA.",
+                "skills": ["Python", "Machine Learning", "Docker"],
+            },
+        },
+    )
+
     await project_queue.close()
+    await user_queue.close()
 
 
 if __name__ == "__main__":
