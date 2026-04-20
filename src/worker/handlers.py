@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.core.interfaces.llm_provider import ILLMProvider
+from src.infrastructure.llm_provider import ILLMProvider
 from src.repositories.embedding_repository import EmbeddingRepository
 from src.services.embedding_service import EmbeddingService
 

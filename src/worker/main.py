@@ -12,7 +12,7 @@ from src.worker.dispatcher import JobDispatcher
 async def main() -> None:
     """Initialize infrastructure dependencies and start BullMQ queues."""
 
-    engine = create_async_engine(settings.DATABASE_URL, echo=False)
+    engine = create_async_engine(settings.DATABASE_URI, echo=False)
     session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     llm_provider = OpenAIProvider()
 

@@ -3,7 +3,7 @@ from typing import Awaitable, Callable, Dict
 from bullmq import Job
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from src.core.interfaces.llm_provider import ILLMProvider
+from src.infrastructure.llm_provider import ILLMProvider
 from src.worker.handlers import handle_project_identity, handle_user_identity
 
 JobHandler = Callable[[dict, AsyncSession, ILLMProvider], Awaitable[None]]

@@ -25,5 +25,15 @@ services:
     volumes:
       - dev_ai_pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: redis:latest
+    container_name: dev_highfive_backend_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev_ai_redis_data:/data
+
 volumes:
   dev_ai_pgdata:
+  dev_ai_redis_data:
