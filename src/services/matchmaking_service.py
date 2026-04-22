@@ -33,7 +33,7 @@ class MatchmakingService:
         closest_projects = await self.embedding_repo.find_nearest_neighbors(
             target_vector=user_vector_obj.vector_data,
             target_entity_type=EntityType.PROJECT,
-            target_purpose=VectorPurpose.CONTENT,
+            target_purpose=VectorPurpose.IDENTITY,
             limit=limit,
         )
         logger.info(f"Found {len(closest_projects)} project recommendations for user {user_id}")
@@ -48,16 +48,16 @@ class MatchmakingService:
         """
         logger.info(f"Fetching user recommendations for project {project_id} (limit: {limit})")
         project_vector_obj = await self.embedding_repo.get_by_entity_and_purpose(
-            entity_id=project_id, purpose=VectorPurpose.CONTENT
+            entity_id=project_id, purpose=VectorPurpose.IDENTITY
         )
 
         if not project_vector_obj:
             logger.warning(
-                f"No content vector found for project {project_id}, returning empty recommendations"
+                f"No identity vector found for project {project_id}, returning empty recommendations"
             )
             return []
 
-        logger.debug("Project content vector retrieved, searching for similar users")
+        logger.debug("Project identity vector retrieved, searching for similar users")
         closest_users = await self.embedding_repo.find_nearest_neighbors(
             target_vector=project_vector_obj.vector_data,
             target_entity_type=EntityType.USER,

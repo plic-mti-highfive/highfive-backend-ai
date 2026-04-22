@@ -72,10 +72,12 @@ class EmbeddingRepository:
         target_entity_type: EntityType,
         target_purpose: VectorPurpose,
         limit: int = 10,
+        min_similarity: float = 0.5,
     ) -> list[Embedding]:
         """
         Find nearest neighbors to a target vector for a given entity type and purpose.
 
+        min_similarity: Cosine distance threshold (0-2). Lower = more similar. Default 0.5 filters weak matches.
         RLS will enforce tenant_id isolation.
         """
         stmt = (
@@ -83,6 +85,7 @@ class EmbeddingRepository:
             .where(
                 Embedding.entity_type == target_entity_type,
                 Embedding.vector_purpose == target_purpose,
+                Embedding.vector_data.cosine_distance(target_vector) < min_similarity,
             )
             .order_by(Embedding.vector_data.cosine_distance(target_vector))
             .limit(limit)

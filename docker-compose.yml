@@ -34,6 +34,18 @@ services:
     volumes:
       - dev_ai_redis_data:/data
 
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: dev_highfive_backend_redisinsight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    volumes:
+      - dev_ai_redis_insight_data:/data
+
 volumes:
   dev_ai_pgdata:
   dev_ai_redis_data:
+  dev_ai_redis_insight_data:
