@@ -9,6 +9,10 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DATABASE_URI: postgresql+asyncpg://admin:admin@dev_highfive_backend_db:5432/highfive
+      REDIS_HOST: dev_highfive_backend_redis
+      REDIS_PORT: 6379
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
@@ -23,10 +27,13 @@ services:
     restart: on-failure
     env_file:
       - .env
+    environment:
+      DATABASE_URI: postgresql+asyncpg://admin:admin@dev_highfive_backend_db:5432/highfive
+      REDIS_HOST: dev_highfive_backend_redis
+      REDIS_PORT: 6379
     volumes:
       - ./src:/app/src
       - ./config:/app/config
-    command: ["uv", "run", "python", "-m", "src.worker.main"]
     depends_on:
       - db
       - redis
