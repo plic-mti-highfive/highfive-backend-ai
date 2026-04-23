@@ -36,22 +36,21 @@ async def test_get_project_recommendations_integration(db_session: AsyncSession,
         entity_type=EntityType.PROJECT,
         entity_id=perfect_match_project_id,
         vector_data=user_vector,
-        vector_purpose=VectorPurpose.CONTENT,
+        vector_purpose=VectorPurpose.IDENTITY,
         payload_metadata={},
     )
 
-    # Project B : Opposite vector, should be less relevant
+    # Project B : Opposite vector, should not be recommended
     bad_vector = [0.0, 1.0] + [0.0] * 1534
     await repo.create(
         entity_type=EntityType.PROJECT,
         entity_id=bad_match_project_id,
         vector_data=bad_vector,
-        vector_purpose=VectorPurpose.CONTENT,
+        vector_purpose=VectorPurpose.IDENTITY,
         payload_metadata={},
     )
 
     recommendations = await service.get_project_recommendations_for_user(user_id=user_id, limit=2)
 
-    assert len(recommendations) == 2
+    assert len(recommendations) == 1
     assert recommendations[0] == perfect_match_project_id
-    assert recommendations[1] == bad_match_project_id

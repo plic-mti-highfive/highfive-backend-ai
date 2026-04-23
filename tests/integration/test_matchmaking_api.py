@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 
 from src.api.dependencies import get_current_user
 from src.infrastructure.database import set_tenant_context
@@ -32,6 +33,7 @@ async def test_get_projects_for_user_api(db_session, test_tenant_id):
     project_id = uuid.uuid4()
 
     await set_tenant_context(db_session, test_tenant_id)
+    await db_session.execute(text("SET ROLE api_tester"))
     repo = EmbeddingRepository(db_session, test_tenant_id)
 
     vector = [0.5] * 1536
@@ -46,7 +48,7 @@ async def test_get_projects_for_user_api(db_session, test_tenant_id):
         entity_type=EntityType.PROJECT,
         entity_id=project_id,
         vector_data=vector,
-        vector_purpose=VectorPurpose.CONTENT,
+        vector_purpose=VectorPurpose.IDENTITY,
         payload_metadata={},
     )
     await db_session.commit()  # Necessary for AsyncClient to see data

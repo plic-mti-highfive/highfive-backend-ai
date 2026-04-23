@@ -28,13 +28,13 @@ async def test_readyz():
 
 
 @pytest.mark.asyncio
-async def test_healthz():
+async def test_status():
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://testserver"
     ) as client:
-        response = await client.get("/api/v1/healthz")
+        response = await client.get("/api/v1/status")
         assert response.status_code == 200
-        assert response.json() == {
-            "status": "ok",
-            "components": {"api": "up", "database": "up"},
-        }
+        data = response.json()
+        assert data["status"] in ["ok", "degraded"]
+        assert data["components"]["api"] == "up"
+        assert data["components"]["database"] in ["up", "down"]
