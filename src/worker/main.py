@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 
 
 async def main() -> None:
-    """Initialize infrastructure dependencies and start BullMQ workers from configuration."""
+    """Initialize infrastructure dependencies and start BullMQ workers."""
     logger.info("Initializing worker infrastructure...")
 
     engine = create_async_engine(settings.DATABASE_URI, echo=False)
@@ -21,7 +21,7 @@ async def main() -> None:
 
     # Load workers configuration and create worker instances
     workers_config = settings.load_workers_config()
-    logger.info(f"Loaded configuration for {len(workers_config.workers)} workers")
+    logger.info(f"Loaded config for {len(workers_config.workers)} workers")
 
     factory = WorkerFactory(session_maker, llm_provider, settings.redis_opts)
     workers = factory.create_workers(workers_config)

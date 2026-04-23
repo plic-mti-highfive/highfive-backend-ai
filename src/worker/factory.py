@@ -33,7 +33,6 @@ class WorkerFactory:
         self.session_maker = session_maker
         self.llm_provider = llm_provider
         self.redis_opts = redis_opts
-        self.dispatcher = JobDispatcher(session_maker, llm_provider)
 
     def create_workers(self, workers_config: WorkersConfig) -> list[Worker]:
         """
@@ -50,15 +49,18 @@ class WorkerFactory:
         for worker_cfg in workers_config.workers:
             logger.info(
                 f"Creating worker '{worker_cfg.name}' for queue '{worker_cfg.queue}' "
-                f"with concurrency={worker_cfg.concurrency}"
+                f"concurrency={worker_cfg.concurrency}"
             )
+
+            dispatcher = JobDispatcher(self.session_maker, self.llm_provider, worker_cfg.name)
 
             worker = Worker(
                 worker_cfg.queue,
-                self.dispatcher.process,
+                dispatcher.process,
                 {
                     "connection": self.redis_opts,
                     "concurrency": worker_cfg.concurrency,
+                    "name": worker_cfg.name,
                 },
             )
 

@@ -2,10 +2,11 @@
 Integration test fixtures - separate from unit tests.
 Integration tests need real DB persists to work with AsyncClient.
 """
+
 import pytest_asyncio
 from sqlalchemy import text
 
-from tests.conftest import TestingSessionLocal, engine
+from tests.conftest import TestingSessionLocal
 
 
 @pytest_asyncio.fixture()
@@ -22,6 +23,6 @@ async def db_session(test_tenant_id):
             # Clean up test data by tenant_id
             await session.execute(
                 text("DELETE FROM embeddings WHERE tenant_id = :tenant_id"),
-                {"tenant_id": test_tenant_id}
+                {"tenant_id": test_tenant_id},
             )
             await session.commit()
