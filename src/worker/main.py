@@ -1,37 +1,32 @@
 import asyncio
 import signal
 
-from bullmq import Worker
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.core.config import settings
 from src.core.logger import get_logger
 from src.infrastructure.llm.openai_provider import OpenAIProvider
-from src.worker.dispatcher import JobDispatcher
+from src.worker.factory import WorkerFactory
 
 logger = get_logger(__name__)
 
 
 async def main() -> None:
-    """Initialize infrastructure dependencies and start BullMQ queues."""
+    """Initialize infrastructure dependencies and start BullMQ workers from configuration."""
     logger.info("Initializing worker infrastructure...")
 
     engine = create_async_engine(settings.DATABASE_URI, echo=False)
     session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     llm_provider = OpenAIProvider()
 
-    dispatcher = JobDispatcher(session_maker, llm_provider)
-    logger.info("JobDispatcher initialized")
+    # Load workers configuration and create worker instances
+    workers_config = settings.load_workers_config()
+    logger.info(f"Loaded configuration for {len(workers_config.workers)} workers")
 
-    user_worker = Worker(
-        "high_priority", dispatcher.process, {"connection": settings.redis_opts, "concurrency": 5}
-    )
-    logger.info("High-priority worker started")
-
-    project_worker = Worker(
-        "default", dispatcher.process, {"connection": settings.redis_opts, "concurrency": 2}
-    )
-    logger.info("Default priority worker started")
+    factory = WorkerFactory(session_maker, llm_provider, settings.redis_opts)
+    workers = factory.create_workers(workers_config)
+    worker_names = factory.get_worker_names(workers)
+    logger.info(f"Started workers: {', '.join(worker_names)}")
 
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
@@ -47,11 +42,7 @@ async def main() -> None:
     await stop_event.wait()
 
     logger.info("Closing workers and database connections...")
-    await user_worker.close()
-    await project_worker.close()
+    for worker in workers:
+        await worker.close()
     await engine.dispose()
     logger.info("Worker shutdown complete")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

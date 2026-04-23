@@ -1,6 +1,8 @@
 services:
   backend_ai:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     container_name: dev_highfive_backend_ai
     restart: unless-stopped
     ports:
@@ -10,7 +12,24 @@ services:
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
+      - ./config:/app/config
     command: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  worker_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: dev_highfive_backend_worker
+    restart: on-failure
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+    command: ["uv", "run", "python", "-m", "src.worker.main"]
+    depends_on:
+      - db
+      - redis
 
   db:
     image: pgvector/pgvector:pg16

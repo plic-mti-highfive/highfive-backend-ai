@@ -18,14 +18,18 @@ JOB_REGISTRY: Dict[str, JobHandler] = {
 
 
 class JobDispatcher:
-    """Routes incoming BullMQ jobs to their respective registered handlers."""
+    """
+    Routes incoming BullMQ jobs to their respective registered handlers.
+    """
 
     def __init__(self, session_maker: async_sessionmaker, llm_provider: ILLMProvider):
         self.session_maker = session_maker
         self.llm_provider = llm_provider
 
     async def process(self, job: Job, job_token: str) -> str:
-        """Main entrypoint for BullMQ worker instances."""
+        """
+        Main entrypoint for BullMQ worker instances.
+        """
         logger.info(f"Processing job: {job.name} (ID: {job.id})")
 
         handler = JOB_REGISTRY.get(job.name)
