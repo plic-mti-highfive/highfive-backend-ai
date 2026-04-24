@@ -53,7 +53,8 @@ class MatchmakingService:
 
         if not project_vector_obj:
             logger.warning(
-                f"No identity vector found for project {project_id}, returning empty recommendations"
+                "No identity vector found for project "
+                f"{project_id}, returning empty recommendations"
             )
             return []
 

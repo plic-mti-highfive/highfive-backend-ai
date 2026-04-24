@@ -30,7 +30,8 @@ class OpenAIProvider(ILLMProvider):
         Analyse le texte suivant et extrais les catégories.
         Réponds UNIQUEMENT avec un objet JSON valide contenant :
         - "theme": Le thème global principal (ex: "Jeux Vidéo", "Art", "Informatique", "Musique").
-        - "sub_themes": Une liste de 2 à 3 sous-catégories ultra-précises (ex: ["Platformer 2D", "Peinture à l'huile"]).
+        - "sub_themes": Une liste de 2 à 3 sous-catégories ultra-précises
+          (ex: ["Platformer 2D", "Peinture à l'huile"]).
         
         Texte à analyser :
         """

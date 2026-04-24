@@ -77,7 +77,8 @@ class EmbeddingRepository:
         """
         Find nearest neighbors to a target vector for a given entity type and purpose.
 
-        min_similarity: Cosine distance threshold (0-2). Lower = more similar. Default 0.5 filters weak matches.
+        min_similarity: Cosine distance threshold (0-2). Lower = more similar.
+        Default 0.5 filters weak matches.
         RLS will enforce tenant_id isolation.
         """
         stmt = (

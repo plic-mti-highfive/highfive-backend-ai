@@ -42,7 +42,9 @@ class _ColoredFormatter(logging.Formatter):
 
         # Add worker context only if available
         if record.worker_id:
-            record.worker_prefix = f"Worker #{self.COLORS['BOLD']}{record.worker_id}{self.COLORS['RESET']} | "
+            record.worker_prefix = (
+                f"Worker #{self.COLORS['BOLD']}{record.worker_id}{self.COLORS['RESET']} | "
+            )
         else:
             record.worker_prefix = ""
 
@@ -75,7 +77,10 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
         formatter = _ColoredFormatter(
-            fmt="%(asctime)s | %(levelname)s | %(worker_prefix)s%(filename)s:%(lineno)d | %(message)s",
+            fmt=(
+                "%(asctime)s | %(levelname)s | %(worker_prefix)s"
+                "%(filename)s:%(lineno)d | %(message)s"
+            ),
             datefmt="%Y-%m-%d %H:%M:%S",
         )
         handler.addFilter(_ContextFilter())

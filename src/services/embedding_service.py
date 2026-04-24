@@ -77,7 +77,8 @@ class EmbeddingService:
         vector_task = self.llm_provider.generate_embedding(text_to_vectorize)
         metadata_task = self.llm_provider.extract_metadata(text_to_vectorize)
         logger.debug(
-            f"Started parallel embedding generation and metadata extraction for project {project_id}"
+            "Started parallel embedding generation and metadata extraction "
+            f"for project {project_id}"
         )
 
         vector_data, extracted_meta = await asyncio.gather(vector_task, metadata_task)

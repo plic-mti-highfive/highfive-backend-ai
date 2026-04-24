@@ -32,8 +32,10 @@ class WorkerMonitor:
 
     async def are_workers_healthy(self, queue_names: list[str]) -> bool:
         """
-        Basic heuristic: If any queue has >100 waiting jobs and 0 active workers, consider it unhealthy.
-         This indicates jobs are piling up without being processed.
+        Basic heuristic: If any queue has >100 waiting jobs and 0 active workers,
+        consider it unhealthy.
+
+        This indicates jobs are piling up without being processed.
         """
         stats = await self.get_all_queues_stats(queue_names)
 

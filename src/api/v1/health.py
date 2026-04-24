@@ -35,7 +35,8 @@ async def readiness_probe(db: AsyncSession = Depends(get_db)):
     """
     Endpoint to check if the API is ready to handle requests. It checks database connectivity.
 
-    Note: Redis and workers are not checked here as the API can still serve cached/legacy data without them.
+    Note: Redis and workers are not checked here as the API can still serve
+    cached/legacy data without them.
     """
     logger.debug("Readiness probe requested")
     try:
