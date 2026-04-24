@@ -10,6 +10,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
+RUN uv run python -m spacy download fr_core_news_sm
 
 COPY CHANGELOG.md ./
 ARG VERSION=undefined

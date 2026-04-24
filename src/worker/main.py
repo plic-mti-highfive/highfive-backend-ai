@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from src.core.config import settings
 from src.core.logger import get_logger
+from src.core.nlp_processor import NLPManager
 from src.infrastructure.llm.openai_provider import OpenAIProvider
 from src.worker.factory import WorkerFactory
 
@@ -12,9 +13,12 @@ logger = get_logger(__name__)
 
 
 async def main() -> None:
-    """Initialize infrastructure dependencies and start BullMQ workers."""
+    """
+    Initialize infrastructure dependencies and start BullMQ workers.
+    """
     logger.info("Initializing worker infrastructure...")
 
+    NLPManager.load_resources()
     engine = create_async_engine(settings.DATABASE_URI, echo=False)
     session_maker = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
     llm_provider = OpenAIProvider()

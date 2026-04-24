@@ -50,7 +50,7 @@ async def test_process_user_identity_integration(
     assert (saved_embedding.vector_data == 0.5).all()
 
     mock_llm_provider.generate_embedding.assert_called_once_with(
-        "Biographie : Développeur passionné de Python. Compétences : FastAPI, Docker."
+        "Biographie : développeur passionner python. Compétences : fastapi docker."
     )
 
 
@@ -91,8 +91,8 @@ async def test_process_project_identity_integration(
     assert (saved_embedding.vector_data == 0.5).all()
 
     mock_llm_provider.generate_embedding.assert_called_once_with(
-        "Nom du projet : Mon projet awesome. Description : Une description super cool. Technologies et mots-clés : Python, FastAPI, Docker."
+        "Nom du projet : projet awesom. Description : description super cool. Technologies et mots-clés : python fastapi docker."
     )
     mock_llm_provider.extract_metadata.assert_called_once_with(
-        "Nom du projet : Mon projet awesome. Description : Une description super cool. Technologies et mots-clés : Python, FastAPI, Docker."
+        "Nom du projet : projet awesom. Description : description super cool. Technologies et mots-clés : python fastapi docker."
     )
