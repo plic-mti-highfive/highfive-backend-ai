@@ -70,6 +70,7 @@ jobs:
           ENVIRONMENT: testing
           JWT_SECRET: secret_key
           DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          OPENAI_API_KEY: dummy_key
 
       - name: Run tests and generate JUnit report
         run: uv run pytest --junit-xml=junit.xml --cov=src --cov-report=xml
@@ -79,6 +80,7 @@ jobs:
           DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+          OPENAI_API_KEY: dummy_key
 
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
@@ -96,6 +98,7 @@ jobs:
           DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
+          OPENAI_API_KEY: dummy_key
 
       - name: Upload coverage as artifact
         uses: actions/upload-artifact@v4
