@@ -38,7 +38,6 @@ def test_worker_factory_initialization(session_maker, mock_llm_provider, redis_o
     assert factory.session_maker == session_maker
     assert factory.llm_provider == mock_llm_provider
     assert factory.redis_opts == redis_opts
-    assert factory.dispatcher is not None
 
 
 @patch("src.worker.factory.Worker")

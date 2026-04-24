@@ -25,16 +25,17 @@ def mock_job():
 @pytest.mark.asyncio
 async def test_dispatcher_initialization(session_maker, mock_llm_provider):
     """Test JobDispatcher initialization."""
-    dispatcher = JobDispatcher(session_maker, mock_llm_provider)
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "test_worker")
 
     assert dispatcher.session_maker == session_maker
     assert dispatcher.llm_provider == mock_llm_provider
+    assert dispatcher.worker_id == "test_worker"
 
 
 @pytest.mark.asyncio
 async def test_process_valid_job(session_maker, mock_llm_provider, mock_job):
     """Test processing a valid job."""
-    dispatcher = JobDispatcher(session_maker, mock_llm_provider)
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "test_worker")
 
     # Mock the handler
     mock_handler = AsyncMock()
@@ -54,7 +55,7 @@ async def test_process_valid_job(session_maker, mock_llm_provider, mock_job):
 @pytest.mark.asyncio
 async def test_process_unknown_job(session_maker, mock_llm_provider, mock_job):
     """Test processing an unknown job raises ValueError."""
-    dispatcher = JobDispatcher(session_maker, mock_llm_provider)
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "test_worker")
     mock_job.name = "unknown_job_type"
 
     with pytest.raises(ValueError, match="No handler registered for job: unknown_job_type"):
@@ -64,7 +65,7 @@ async def test_process_unknown_job(session_maker, mock_llm_provider, mock_job):
 @pytest.mark.asyncio
 async def test_process_job_with_handler_error(session_maker, mock_llm_provider, mock_job):
     """Test that errors in handlers are propagated."""
-    dispatcher = JobDispatcher(session_maker, mock_llm_provider)
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "test_worker")
 
     # Mock the handler to raise an exception
     mock_handler = AsyncMock(side_effect=Exception("Handler error"))
@@ -77,7 +78,7 @@ async def test_process_job_with_handler_error(session_maker, mock_llm_provider, 
 @pytest.mark.asyncio
 async def test_process_project_identity_job(session_maker, mock_llm_provider):
     """Test processing a project identity job."""
-    dispatcher = JobDispatcher(session_maker, mock_llm_provider)
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "test_worker")
 
     job = MagicMock()
     job.id = str(uuid.uuid4())
@@ -106,7 +107,7 @@ def test_job_registry_contains_expected_handlers():
 @pytest.mark.asyncio
 async def test_dispatcher_session_management(session_maker, mock_llm_provider, mock_job):
     """Test that dispatcher properly manages database sessions."""
-    dispatcher = JobDispatcher(session_maker, mock_llm_provider)
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "test_worker")
 
     mock_handler = AsyncMock()
     with patch.dict(JOB_REGISTRY, {"update_user_identity": mock_handler}):
@@ -118,7 +119,7 @@ async def test_dispatcher_session_management(session_maker, mock_llm_provider, m
 @pytest.mark.asyncio
 async def test_process_empty_job_data(session_maker, mock_llm_provider):
     """Test processing a job with empty data."""
-    dispatcher = JobDispatcher(session_maker, mock_llm_provider)
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "test_worker")
 
     job = MagicMock()
     job.id = str(uuid.uuid4())
