@@ -9,34 +9,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Base de données PostgreSQL**
-  - Connexion asynchrone via SQLAlchemy 2.0 + AsyncPG
-  - Modèles SQLAlchemy ORM pour embeddings et pgvector
-  - Session async avec `AsyncSessionLocal`
-- **Migrations de schéma avec Alembic**
-  - Migration initiale avec support pgvector
-  - Commands alembic `upgrade`, `downgrade`, `history`, `current`
-- **Pattern Repository**
-  - `embedding_repository.py` pour l'accès aux données
-  - Abstraction clean de la logique DB
-- **Tests asynchrones**
-  - pytest-asyncio pour tests async
-  - httpx pour tester les endpoints FastAPI
-  - Coverage report avec pytest-cov
-  - Configuration pytest dans pyproject.toml
-- **Dépendances injectables**
-  - `dependencies.py` avec injection de repositories et sessions
-- **Health route mise à jour**
-  - Endpoint enrichi avec plus d'informations
-  - Tests pour health check
+- **Worker Service avec BullMQ & Redis**
+  - Architecture worker distribuée avec support multi-queue (high_priority, default)
+  - Implémentation BullMQ pour job processing asynchrone
+  - Configuration workers via `config/workers.yaml` avec support concurrency et retries
+  - Worker CLI entry point pour démarrage du service
+  - Factory pattern pour création dynamique de workers depuis configuration
+  - WorkerMonitor pour health checks et statistiques queues
+  - Redis Insight intégré dans docker-compose pour monitoring
+  - Tests unitaires complets pour factory, dispatcher et monitor
+
+- **Logging System**
+  - Logger centralisé via `src/core/logger.py`
+  - Format structuré avec timestamps, levels et stack traces
+
+- **Docker Architecture Révisée**
+  - Séparation Dockerfile en `Dockerfile.api` (serveur) et `Dockerfile.worker` (worker)
+  - Service worker_service dans docker-compose avec volumes et dépendances
+  - Support hot reload pour développement local
+
+- **Documentation**
+  - Contrat Redis complet : `docs/redis-contract.md`
+  - Spécifications job schemas et queue definitions
+  - Guide monitoring et troubleshooting
+
+- **Infrastructure & LLM**
+  - Base de données PostgreSQL avec SQLAlchemy 2.0 + AsyncPG
+  - Support pgvector avec index HNSW
+  - Migrations Alembic pour gestion du schéma
+  - Pattern Repository pour abstraction des données
+  - Protocol `LLMProvider` et implémentation OpenAI
+  - Service d'embeddings avec matchmaking utilisateurs-projets
+  - TextProcessor pour normalisation de texte
+
+- **API REST**
+  - Matchmaking endpoints basé sur embeddings
+  - Health check enrichi avec stats workers et queues
+  - Chat et LLM endpoints
+
+- **Tests**
+  - Structure organisation tests (integration/, unit/)
+  - Tests async avec pytest-asyncio
+  - Coverage reports
+  - Tests worker handlers (integration)
+  - Tests worker factory et dispatcher (unit)
 
 ### Changed
 
-- Configuration Docker Compose (volumes et version)
+- Réorganisation structure src/worker avec CLI, factory, dispatcher
+- Health endpoint enrichi pour inclure statistiques workers
+- Configuration LLM provider pour meilleure extensibilité
+- Docker-compose restructuré avec services séparés API et Worker
+- GitHub Actions pipeline mis à jour pour build des deux images
 
 ### Fixed
 
-- Corrections mineures dans docker-compose.yml
+- Corrections Docker (layer optimization, ENV variables)
+- Mineurs bugs worker initialization
 
 ## [1.0.0] - 2026-03-25
 

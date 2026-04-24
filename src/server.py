@@ -4,7 +4,10 @@ from fastapi import FastAPI
 
 from src.api.v1.router import api_router
 from src.core.config import settings
+from src.core.logger import get_logger
 from src.core.middlewares import TimingMiddleware
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -15,7 +18,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    print(f"Creating FastAPI app version {settings.VERSION} in {settings.ENV} environment")
+    logger.info(f"Creating FastAPI app version {settings.VERSION} in {settings.ENV} environment")
     app = FastAPI(
         title="HighFive! AI API",
         description="AI microservice for HighFive!",

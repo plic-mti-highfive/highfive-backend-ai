@@ -1,3 +1,7 @@
+import uuid
+from unittest.mock import AsyncMock
+
+import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -26,8 +30,43 @@ async def verify_db_ready():
     yield
 
 
+@pytest.fixture()
+def test_tenant_id():
+    """Generate unique tenant_id for each test (isolation)."""
+    return uuid.uuid4()
+
+
 @pytest_asyncio.fixture()
-async def db_session():
+async def db_session(test_tenant_id):
+    """
+    DB session for unit tests.
+    IMPORTANT: Tests should NOT call commit() - use only flush().
+    Rollback at end ensures zero data persists.
+    """
     async with TestingSessionLocal() as session:
         yield session
         await session.rollback()
+
+
+@pytest.fixture()
+def mock_llm_provider():
+    """Mock LLM provider for testing."""
+    mock = AsyncMock()
+    mock.generate_embedding.return_value = [0.5] * 1536
+    mock.extract_metadata.return_value = {
+        "theme": "Informatique",
+        "sub_themes": ["Backend", "APIs"],
+    }
+    return mock
+
+
+@pytest.fixture()
+def redis_opts():
+    """Redis connection options for testing."""
+    return settings.redis_opts
+
+
+@pytest.fixture()
+def session_maker():
+    """Session maker factory for tests."""
+    return TestingSessionLocal

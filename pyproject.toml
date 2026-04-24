@@ -7,10 +7,14 @@ requires-python = ">=3.11"
 dependencies = [
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
+    "bullmq>=2.20.4",
     "fastapi>=0.135.2",
+    "openai>=2.30.0",
     "pgvector>=0.4.2",
     "pydantic-settings>=2.13.1",
     "pyjwt>=2.12.1",
+    "pyyaml>=6.0.3",
+    "redis>=5.3.1",
     "sqlalchemy>=2.0.48",
     "uvicorn>=0.42.0",
 ]
@@ -23,6 +27,9 @@ dev = [
     "pytest-cov>=7.1.0",
     "ruff>=0.15.7",
 ]
+
+[project.scripts]
+start-worker = "src.worker.cli:main"
 
 [tool.ruff]
 line-length = 100

@@ -36,6 +36,15 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout repository
@@ -61,6 +70,7 @@ jobs:
           ENVIRONMENT: testing
           JWT_SECRET: secret_key
           DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          OPENAI_API_KEY: dummy_key
 
       - name: Run tests and generate JUnit report
         run: uv run pytest --junit-xml=junit.xml --cov=src --cov-report=xml
@@ -68,6 +78,9 @@ jobs:
           ENV: dev
           JWT_SECRET: secret_key
           DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          OPENAI_API_KEY: dummy_key
 
       - name: Publish Test Report
         uses: dorny/test-reporter@v1
@@ -83,6 +96,9 @@ jobs:
           ENV: dev
           JWT_SECRET: secret-de-test
           DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: 6379
+          OPENAI_API_KEY: dummy_key
 
       - name: Upload coverage as artifact
         uses: actions/upload-artifact@v4
@@ -92,16 +108,20 @@ jobs:
           retention-days: 7
 
   # ==========================================
-  # 2. CD : Build & Push Docker Image
+  # 2. CD : Build & Push Docker Images
   # ==========================================
   build-and-push:
-    name: Build & Push Docker Image
+    name: Build & Push ${{ matrix.component }} Image
     needs: test
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
+    strategy:
+      matrix:
+        component: [api, worker]
 
     steps:
       - name: Checkout repository
@@ -114,9 +134,9 @@ jobs:
           if [ -z "$VERSION" ]; then VERSION="unversioned"; fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Lowercase image name
+      - name: Lowercase image name and append component
         run: |
-          echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+          echo "IMAGE_NAME_LOWER=${IMAGE_NAME,,}-${{ matrix.component }}" >> ${GITHUB_ENV}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -148,6 +168,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile.${{ matrix.component }}
           push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
