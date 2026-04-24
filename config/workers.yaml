@@ -1,0 +1,16 @@
+workers:
+  - name: "high_priority"
+    queue: "high_priority"
+    concurrency: 5
+    max_retries: 3
+    retry_backoff_ms: 1000
+    remove_on_complete: true
+    remove_on_fail: false
+
+  - name: "default"
+    queue: "default"
+    concurrency: 2
+    max_retries: 2
+    retry_backoff_ms: 2000
+    remove_on_complete: true
+    remove_on_fail: false

@@ -1,12 +1,77 @@
 services:
   backend_ai:
-    build: .
-    container_name: highfive_backend_ai
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: dev_highfive_backend_ai
     restart: unless-stopped
     ports:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DATABASE_URI: postgresql+asyncpg://admin:admin@dev_highfive_backend_db:5432/highfive
+      REDIS_HOST: dev_highfive_backend_redis
+      REDIS_PORT: 6379
     volumes:
-      - .:/app
+      - ./src:/app/src
+      - ./main.py:/app/main.py
+      - ./config:/app/config
     command: ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  worker_service:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: dev_highfive_backend_worker
+    restart: on-failure
+    env_file:
+      - .env
+    environment:
+      DATABASE_URI: postgresql+asyncpg://admin:admin@dev_highfive_backend_db:5432/highfive
+      REDIS_HOST: dev_highfive_backend_redis
+      REDIS_PORT: 6379
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: dev_highfive_backend_db
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: highfive
+    volumes:
+      - dev_ai_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:latest
+    container_name: dev_highfive_backend_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev_ai_redis_data:/data
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: dev_highfive_backend_redisinsight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    volumes:
+      - dev_ai_redis_insight_data:/data
+
+volumes:
+  dev_ai_pgdata:
+  dev_ai_redis_data:
+  dev_ai_redis_insight_data:
