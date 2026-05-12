@@ -59,8 +59,12 @@ class MatchmakingService:
         """
 
         target_vector = None
-        interest_emb = await self.repo.get_by_entity_and_purpose(user_id, VectorPurpose.INTEREST)
-        identity_emb = await self.repo.get_by_entity_and_purpose(user_id, VectorPurpose.IDENTITY)
+        interest_emb = await self.embedding_repo.get_by_entity_and_purpose(
+            user_id, VectorPurpose.INTEREST
+        )
+        identity_emb = await self.embedding_repo.get_by_entity_and_purpose(
+            user_id, VectorPurpose.IDENTITY
+        )
 
         # Dual Vector
         if interest_emb and identity_emb:
@@ -72,8 +76,17 @@ class MatchmakingService:
         elif identity_emb:
             target_vector = identity_emb.vector_data
 
-        recommended_projects = await self.repo.search_projects_v2(
+        recommended_projects = await self.embedding_repo.search_projects(
             target_vector=target_vector, tags_filter=tags, limit=limit
         )
 
         return [proj.entity_id for proj in recommended_projects]
+
+    async def get_trending_projects(self, limit: int = 10) -> list[uuid.UUID]:
+        """
+        Get trending projects based on recent interactions and time-decay.
+        This will return projects that are currently popular, giving more weight to recent interactions.
+        """
+        trending_projects = await self.embedding_repo.get_trending_projects(limit=limit)
+
+        return [proj.entity_id for proj in trending_projects]

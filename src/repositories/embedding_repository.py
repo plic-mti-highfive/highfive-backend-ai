@@ -1,6 +1,7 @@
 import uuid
 
 from sqlalchemy import Float, cast, func, nulls_last, select
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.constants import TRENDING_GRAVITY
@@ -144,7 +145,7 @@ class EmbeddingRepository:
 
         # Filter on tags if provided
         if tags_filter:
-            stmt = stmt.where(Embedding.payload_metadata["tags"].has_any(*tags_filter))
+            stmt = stmt.where(Embedding.payload_metadata["theme"].has_any(array(tags_filter)))
 
         # 2. MATCHMAKING AI vs TRENDING
         if target_vector:

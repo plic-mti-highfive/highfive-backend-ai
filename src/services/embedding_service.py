@@ -77,8 +77,7 @@ class EmbeddingService:
             entity_id=project_id, purpose=VectorPurpose.IDENTITY
         )
         if not project_emb:
-            logger.warning(f"Project {project_id} has no vector. Cannot update user interest.")
-            return
+            raise ValueError(f"Project {project_id} vector not found. Retrying later...")
 
         # 2. Récupérer le vecteur d'Intérêt actuel de l'User
         user_interest_emb = await self.embedding_repo.get_by_entity_and_purpose(

@@ -62,5 +62,5 @@ async def get_trending_projects(
 
     # Appelle la méthode qu'on a créée dans le Repository (Time-Decay)
     # Tu devras juste ajouter un petit passe-plat dans ton MatchmakingService pour l'appeler
-    result = await matchmaking_service.repo.get_trending_projects(limit=limit)
-    return [proj.entity_id for proj in result]
+    result = await matchmaking_service.get_trending_projects(limit=limit)
+    return result

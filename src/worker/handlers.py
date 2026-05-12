@@ -90,8 +90,7 @@ async def handle_project_stats_updated(
     embedding = result.scalar_one_or_none()
 
     if not embedding:
-        logger.warning(f"Project {project_id} not found. Cannot update stats.")
-        return
+        raise ValueError(f"Project {project_id} not found. Retrying later...")
 
     if not embedding.payload_metadata:
         embedding.payload_metadata = {}
