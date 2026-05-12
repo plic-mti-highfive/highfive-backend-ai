@@ -13,6 +13,7 @@ from src.repositories.embedding_repository import EmbeddingRepository
 
 logger = get_logger(__name__)
 
+# ----- VECTOR SCHEMAS -----
 # USER
 USER_IDENTITY_SCHEMA = {
     "bio": "Biographie : {}.",
