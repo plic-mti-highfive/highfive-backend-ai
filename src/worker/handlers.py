@@ -2,6 +2,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.constants import InteractionType
 from src.core.logger import get_logger
 from src.infrastructure.llm_provider import ILLMProvider
 from src.repositories.embedding_repository import EmbeddingRepository
@@ -38,3 +39,27 @@ async def handle_project_identity(
 
     await service.process_project_identity(project_id=project_id, payload=data.get("payload", {}))
     logger.info(f"Project identity processing completed for project {project_id}")
+
+
+async def handle_user_interaction(
+    data: dict, session: AsyncSession, llm_provider: ILLMProvider
+) -> None:
+    """
+    Process a user interaction to update their INTEREST vector.
+    Expected data payload: { "tenant_id": "...", "user_id": "...", "project_id": "...", "interaction_type": "LIKE" }
+    """
+    tenant_id = uuid.UUID(data["tenant_id"])
+    user_id = uuid.UUID(data["user_id"])
+    project_id = uuid.UUID(data["project_id"])
+
+    interaction_type = InteractionType(data["interaction_type"])
+
+    logger.info(f"Processing {interaction_type} for user {user_id} on project {project_id}")
+
+    repo = EmbeddingRepository(session, tenant_id)
+    service = EmbeddingService(llm_provider, repo, tenant_id)
+
+    await service.process_user_interaction(
+        user_id=user_id, project_id=project_id, interaction_type=interaction_type
+    )
+    logger.info(f"Interaction processing completed for user {user_id}")
