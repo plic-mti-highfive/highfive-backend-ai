@@ -1,8 +1,9 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import Float, cast, func, nulls_last, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.constants import TRENDING_GRAVITY
 from src.models.embedding import Embedding, EntityType, VectorPurpose
 
 
@@ -91,5 +92,36 @@ class EmbeddingRepository:
             .order_by(Embedding.vector_data.cosine_distance(target_vector))
             .limit(limit)
         )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    def _get_trending_score_expr(self):
+        """
+        Get a SQL expression to calculate a trending score based on likes and recency for projects.
+        Formule: trending_score = (likes + 1) / ((age_in_hours + 2) ^ gravity)
+        """
+        likes = func.coalesce(cast(Embedding.payload_metadata["likes"].astext, Float), 0.0)
+
+        age_in_hours = func.extract("epoch", func.now() - Embedding.updated_at) / 3600.0
+
+        trending_score = (likes + 1.0) / func.power((age_in_hours + 2.0), TRENDING_GRAVITY)
+
+        return trending_score
+
+    async def get_trending_projects(self, limit: int = 10) -> list[Embedding]:
+        """
+        Get trending projects for the current tenant.
+        """
+        trending_expr = self._get_trending_score_expr()
+
+        stmt = (
+            select(Embedding)
+            .where(
+                Embedding.entity_type == EntityType.PROJECT, Embedding.tenant_id == self.tenant_id
+            )
+            .order_by(nulls_last(trending_expr.desc()))
+            .limit(limit)
+        )
+
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
