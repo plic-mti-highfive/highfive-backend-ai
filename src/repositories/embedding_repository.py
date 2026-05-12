@@ -125,3 +125,37 @@ class EmbeddingRepository:
 
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def search_projects(
+        self,
+        target_vector: list[float] | None = None,
+        tags_filter: list[str] | None = None,
+        limit: int = 10,
+    ) -> list[Embedding]:
+        """
+        Search for projects using a hybrid approach:
+        - If a target_vector is provided, perform AI matchmaking.
+        - If no target_vector is provided (e.g. cold start), fall back to trending.
+        - If tags are provided, filter projects that have matching tags in their payload_metadata.
+        """
+        stmt = select(Embedding).where(
+            Embedding.entity_type == EntityType.PROJECT, Embedding.tenant_id == self.tenant_id
+        )
+
+        # Filter on tags if provided
+        if tags_filter:
+            stmt = stmt.where(Embedding.payload_metadata["tags"].has_any(*tags_filter))
+
+        # 2. MATCHMAKING AI vs TRENDING
+        if target_vector:
+            # If user has a interest vector, we use it for matchmaking
+            stmt = stmt.order_by(Embedding.vector_data.cosine_distance(target_vector))
+        else:
+            # If no vector provided (ex: cold start), we fallback to trending algorithm
+            trending_expr = self._get_trending_score_expr()
+            stmt = stmt.order_by(nulls_last(trending_expr.desc()))
+
+        stmt = stmt.limit(limit)
+        result = await self.db.execute(stmt)
+
+        return list(result.scalars().all())
