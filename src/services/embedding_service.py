@@ -2,7 +2,7 @@ import asyncio
 import uuid
 
 from src.core.logger import get_logger
-from src.core.text_processor import TextProcessor
+from src.core.nlp_processor import NLPManager
 from src.infrastructure.llm_provider import ILLMProvider
 from src.models.embedding import EntityType, VectorPurpose
 from src.repositories.embedding_repository import EmbeddingRepository
@@ -50,7 +50,7 @@ class EmbeddingService:
         À appeler quand l'utilisateur met à jour son profil NestJS.
         """
         logger.info(f"Processing user identity vector for user {user_id}")
-        text_to_vectorize = TextProcessor.build_text_from_schema(payload, USER_IDENTITY_SCHEMA)
+        text_to_vectorize = NLPManager.build_text_from_schema(payload, USER_IDENTITY_SCHEMA)
         logger.debug(f"Text prepared for vectorization (length: {len(text_to_vectorize)} chars)")
 
         vector_data = await self.llm_provider.generate_embedding(text_to_vectorize)
@@ -71,7 +71,7 @@ class EmbeddingService:
         payload: dict,
     ) -> None:
         logger.info(f"Processing project identity vector for project {project_id}")
-        text_to_vectorize = TextProcessor.build_text_from_schema(payload, PROJECT_IDENTITY_SCHEMA)
+        text_to_vectorize = NLPManager.build_text_from_schema(payload, PROJECT_IDENTITY_SCHEMA)
         logger.debug(f"Text prepared for vectorization (length: {len(text_to_vectorize)} chars)")
 
         vector_task = self.llm_provider.generate_embedding(text_to_vectorize)

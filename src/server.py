@@ -6,14 +6,17 @@ from src.api.v1.router import api_router
 from src.core.config import settings
 from src.core.logger import get_logger
 from src.core.middlewares import TimingMiddleware
+from src.core.nlp_processor import NLPManager
 
 logger = get_logger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    NLPManager.load_resources()
 
     yield
+    logger.info("Shutting down FastAPI app, performing cleanup if necessary...")
     # await engine.dispose()
 
 

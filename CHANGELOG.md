@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Remplacé `TextProcessor` par `NLPManager` avec spaCy pour normalisation et tokenization de texte
+
 ## [2.0.0] - 2026-04-24
 
 ### Added
