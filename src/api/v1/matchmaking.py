@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 
 from src.api.dependencies import get_matchmaking_service
 from src.core.logger import get_logger
+from src.schemas.embeddings import RecommendationResultItem
 from src.services.matchmaking_service import MatchmakingService
 
 logger = get_logger(__name__)
@@ -12,7 +13,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/matchmaking", tags=["Matchmaking"])
 
 
-@router.get("/users/{user_id}/projects", response_model=List[uuid.UUID])
+@router.get("/users/{user_id}/projects", response_model=List[RecommendationResultItem])
 async def get_projects_for_user(
     user_id: uuid.UUID,
     tags: List[str] | None = Query(default=None),
@@ -34,7 +35,7 @@ async def get_projects_for_user(
     return result
 
 
-@router.get("/projects/{project_id}/users", response_model=List[uuid.UUID])
+@router.get("/projects/{project_id}/users", response_model=List[RecommendationResultItem])
 async def get_users_for_project(
     project_id: uuid.UUID,
     limit: int = 10,
@@ -49,7 +50,7 @@ async def get_users_for_project(
     return result
 
 
-@router.get("/trending", response_model=List[uuid.UUID])
+@router.get("/trending", response_model=List[RecommendationResultItem])
 async def get_trending_projects(
     limit: int = 10,
     matchmaking_service: MatchmakingService = Depends(get_matchmaking_service),
@@ -60,7 +61,5 @@ async def get_trending_projects(
     """
     logger.info(f"Fetching trending projects (limit: {limit})")
 
-    # Appelle la méthode qu'on a créée dans le Repository (Time-Decay)
-    # Tu devras juste ajouter un petit passe-plat dans ton MatchmakingService pour l'appeler
     result = await matchmaking_service.get_trending_projects(limit=limit)
     return result

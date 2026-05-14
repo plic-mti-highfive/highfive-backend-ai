@@ -4,6 +4,7 @@ import uuid
 from src.core.logger import get_logger
 from src.models.embedding import EntityType, VectorPurpose
 from src.repositories.embedding_repository import EmbeddingRepository
+from src.schemas.embeddings import RecommendationResultItem
 
 logger = get_logger(__name__)
 
@@ -23,7 +24,7 @@ class MatchmakingService:
 
     async def get_user_recommendations_for_project(
         self, project_id: uuid.UUID, limit: int = 10
-    ) -> list[uuid.UUID]:
+    ) -> list[RecommendationResultItem]:
         """
         Get user recommendations for a project based on vector similarity between the project's
         CONTENT vector and users' IDENTITY vectors.
@@ -48,11 +49,14 @@ class MatchmakingService:
             limit=limit,
         )
         logger.info(f"Found {len(closest_users)} user recommendations for project {project_id}")
-        return [user.entity_id for user in closest_users]
+        return [
+            RecommendationResultItem(id=user.entity_id, position=i, metadata=user.payload_metadata)
+            for i, user in enumerate(closest_users)
+        ]
 
     async def get_project_recommendations_for_user(
         self, user_id: uuid.UUID, tags: list[str] | None = None, limit: int = 10
-    ) -> list[uuid.UUID]:
+    ) -> list[RecommendationResultItem]:
         """
         Get project recommendations for a user based on vector similarity between the user's
         combined INTEREST/IDENTITY vector and projects' IDENTITY vectors. Optionally filter by tags.
@@ -80,13 +84,21 @@ class MatchmakingService:
             target_vector=target_vector, tags_filter=tags, limit=limit
         )
 
-        return [proj.entity_id for proj in recommended_projects]
+        return [
+            RecommendationResultItem(id=proj.entity_id, position=i, metadata=proj.payload_metadata)
+            for i, proj in enumerate(recommended_projects)
+        ]
 
-    async def get_trending_projects(self, limit: int = 10) -> list[uuid.UUID]:
+    async def get_trending_projects(self, limit: int = 10) -> list[RecommendationResultItem]:
         """
         Get trending projects based on recent interactions and time-decay.
         This will return projects that are currently popular, giving more weight to recent interactions.
         """
         trending_projects = await self.embedding_repo.get_trending_projects(limit=limit)
 
-        return [proj.entity_id for proj in trending_projects]
+        return [
+            RecommendationResultItem(
+                id=proj.entity_id, position=idx, metadata=proj.payload_metadata
+            )
+            for idx, proj in enumerate(trending_projects)
+        ]
