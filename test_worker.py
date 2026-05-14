@@ -12,7 +12,7 @@ logger = get_logger(__name__)
 async def simulate_nestjs():
     redis_opts = settings.redis_opts
 
-    project_queue = Queue("default", {"connection": redis_opts})
+    project_queue = Queue("ai_tasks", {"connection": redis_opts})
 
     tenant_id = "f9f64379-2cf3-447f-bc6d-3c185b1c39ac"
     user_id = "6382a590-726a-4e7a-9e82-6e52a760e094"
@@ -48,7 +48,7 @@ async def simulate_nestjs():
     )
     logger.info("Added artistic project to queue")
 
-    user_queue = Queue("high_priority", {"connection": redis_opts})
+    user_queue = Queue("ai_tasks", {"connection": redis_opts})
 
     await user_queue.add(
         "update_user_identity",

@@ -34,6 +34,7 @@ async def verify_db_ready():
             END $$;
         """)
         )
+        await conn.execute(text("GRANT USAGE ON SCHEMA public TO api_tester;"))
         await conn.execute(text("GRANT ALL ON TABLE embeddings TO api_tester;"))
     yield
 

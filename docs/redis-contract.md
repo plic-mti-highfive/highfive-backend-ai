@@ -1,4 +1,4 @@
-# Redis Contract - HighFive Backend
+# Redis Contract - HighFive AI Backend
 
 ## Connection
 
@@ -7,38 +7,29 @@
 - **DB**: 0
 - **Auth**: None (dev) - implement in production
 
-## Queues
+## Queues (BullMQ)
 
-| Queue Name      | Concurrency | Max Retries | Retry Backoff | Remove on Complete |
-|-----------------|-------------|-------------|---------------|--------------------|
-| `high_priority` | 5           | 3           | 1000ms        | true               |
-| `default`       | 2           | 2           | 2000ms        | true               |
+L'architecture est séparée en deux files distinctes pour isoler les requêtes LLM lentes des opérations mathématiques instantanées.
+
+| Queue Name      | Purpose | Concurrency | Max Retries | Retry Backoff |
+|-----------------|---------|-------------|-------------|---------------|
+| `ai_tasks`      | Appels API OpenAI (Embeddings, NLP) | 5 | 3 | 1000ms |
+| `fast_events`   | Opérations SQL et Mathématiques locales | 2 | 2 | 2000ms |
 
 ## Job Schema
 
 ### Job Structure
 
-All jobs stored in Redis queues follow this structure:
+All jobs stored in Redis queues must follow this BullMQ structure:
 
 ```json
 {
-  "id": "job-uuid",
-  "queueName": "default|high_priority",
+  "name": "job_type_name",
   "data": {
-    "type": "job_type_name",
-    "user_id": "uuid",
-    "timestamp": "2026-04-23T14:30:00Z",
-    "payload": {}
-  },
-  "opts": {
-    "attempts": 0,
-    "delay": 0,
-    "removeOnComplete": true,
-    "removeOnFail": false
-  },
-  "attemptsMade": 0,
-  "progress": 0,
-  "timestamp": 1713880200000
+    "tenant_id": "uuid",
+    "project_id_or_user_id": "uuid",
+    "...": "specific payload"
+  }
 }
 ```
 
@@ -56,7 +47,7 @@ All jobs stored in Redis queues follow this structure:
 
 Generates embedding for user identity (bio, skills).
 
-**Queue**: `high_priority`  
+**Queue**: `ai_tasks`
 **Job name**: `update_user_identity`  
 **Job data**:
 ```json
@@ -76,7 +67,7 @@ Generates embedding for user identity (bio, skills).
 
 Generates embedding for project identity (name, description, tags). Extracts metadata in parallel.
 
-**Queue**: `default`  
+**Queue**: `ai_tasks`
 **Job name**: `update_project_identity`  
 **Job data**:
 ```json
@@ -90,6 +81,41 @@ Generates embedding for project identity (name, description, tags). Extracts met
     "visibility": "string (optional)"
   }
 }
+```
+
+### user_interacted_with_project
+
+Updates the user's interest vector (Mean Pooling).
+
+**Queue**: `fast_events`
+**Job Name**: `user_interacted_with_project`  
+**Job data**:
+
+```json
+{
+  "tenant_id": "uuid",
+  "user_id": "uuid",
+  "project_id": "uuid",
+  "interaction_type": "LIKE" | "APPLY"
+}
+
+```
+
+### project_stats_updated
+
+Updates counters for the trending algorithm (Time-Decay).
+
+**Queue**: `fast_events`
+**Job Name**: `project_stats_updated`  
+**Job data**:
+
+```json
+{
+  "tenant_id": "uuid",
+  "project_id": "uuid",
+  "likes": number
+}
+
 ```
 
 ## Monitoring
@@ -114,5 +140,3 @@ Response includes:
 ```
 
 Health is `false` if any queue has `>100 waiting` jobs with `0 active` workers.
-
-

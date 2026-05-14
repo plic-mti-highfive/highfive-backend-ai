@@ -148,7 +148,7 @@ class EmbeddingRepository:
             stmt = stmt.where(Embedding.payload_metadata["theme"].has_any(array(tags_filter)))
 
         # 2. MATCHMAKING AI vs TRENDING
-        if target_vector:
+        if target_vector is not None:
             # If user has a interest vector, we use it for matchmaking
             stmt = stmt.order_by(Embedding.vector_data.cosine_distance(target_vector))
         else:

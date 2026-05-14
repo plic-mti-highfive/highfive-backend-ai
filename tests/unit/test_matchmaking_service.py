@@ -52,5 +52,6 @@ async def test_get_project_recommendations_integration(db_session: AsyncSession,
 
     recommendations = await service.get_project_recommendations_for_user(user_id=user_id, limit=2)
 
-    assert len(recommendations) == 1
+    assert len(recommendations) == 2
     assert recommendations[0] == perfect_match_project_id
+    assert recommendations[1] == bad_match_project_id
