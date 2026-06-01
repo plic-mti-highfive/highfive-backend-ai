@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.v1.router import api_router
 from src.core.config import settings
@@ -22,6 +23,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     logger.info(f"Creating FastAPI app version {settings.VERSION} in {settings.ENV} environment")
+
+    # Metadata
     app = FastAPI(
         title="HighFive! AI API",
         description="AI microservice for HighFive!",
@@ -30,8 +33,26 @@ def create_app() -> FastAPI:
         root_path="/ai",
     )
 
+    # Middlewares
     app.add_middleware(TimingMiddleware)
 
+    origins = [
+        "http://localhost",
+        "http://localhost:3000",  # Core backend
+        "http://localhost:5173",  # Frontend (Vite)
+        "http://localhost:8080",  # Canvas backend
+        "http://localhost:8000",
+    ]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Routers
     app.include_router(api_router, prefix="/api/v1")
 
     return app

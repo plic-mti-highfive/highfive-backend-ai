@@ -10,9 +10,11 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URI: postgresql+asyncpg://admin:admin@dev_highfive_backend_db:5432/highfive
-      REDIS_HOST: dev_highfive_backend_redis
+      DB_HOST: db
+      DB_PORT: 5432
+      REDIS_HOST: redis
       REDIS_PORT: 6379
+      DATABASE_URI: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_DATABASE}
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
@@ -23,55 +25,70 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    container_name: dev_highfive_backend_worker
+    container_name: dev_highfive_backend_ai_worker
     restart: on-failure
     env_file:
       - .env
     environment:
-      DATABASE_URI: postgresql+asyncpg://admin:admin@dev_highfive_backend_db:5432/highfive
-      REDIS_HOST: dev_highfive_backend_redis
+      DB_HOST: db
+      DB_PORT: 5432
+      REDIS_HOST: redis
       REDIS_PORT: 6379
+      DATABASE_URI: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@db:5432/${DB_DATABASE}
     volumes:
       - ./src:/app/src
       - ./config:/app/config
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
+  # Utils
   db:
     image: pgvector/pgvector:pg16
-    container_name: dev_highfive_backend_db
+    container_name: dev_highfive_db
     restart: unless-stopped
     ports:
-      - "5434:5432"
+      - "${DB_PORT}:5432"
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: highfive
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
     volumes:
-      - dev_ai_pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis:latest
-    container_name: dev_highfive_backend_redis
+    image: redis:7-alpine
+    container_name: dev_highfive_redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
-      - dev_ai_redis_data:/data
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redisinsight:
     image: redislabs/redisinsight:latest
-    container_name: dev_highfive_backend_redisinsight
+    container_name: dev_highfive_redisinsight
     restart: unless-stopped
     ports:
-      - "5540:5540"
+      - "${REDIS_INSIGHT_PORT}:5540"
     depends_on:
       - redis
     volumes:
-      - dev_ai_redis_insight_data:/data
+      - redis_insight_data:/data
 
 volumes:
-  dev_ai_pgdata:
-  dev_ai_redis_data:
-  dev_ai_redis_insight_data:
+  pgdata:
+  redis_data:
+  redis_insight_data:
