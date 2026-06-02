@@ -2,7 +2,7 @@ import enum
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, DateTime, Enum, func
+from sqlalchemy import Column, DateTime, Enum, Index, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import declarative_base, mapped_column
 
@@ -46,8 +46,24 @@ class Embedding(Base):
     # vector_data VECTOR(1536) pgvector
     vector_data = mapped_column(Vector(1536), nullable=False)  # OPENAI text-embedding-3-small
 
-    # paylod_metadata JSONB
+    # payload_metadata JSONB
     payload_metadata = Column(JSONB, nullable=True)
 
     # updated_at TIMESTAMP DEFAULT NOW()
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        # GIN index for payload_metadata to speed up JSONB queries
+        Index(
+            "ix_embeddings_payload_metadata_gin",
+            "payload_metadata",
+            postgresql_using="gin",
+        ),
+        # HNSW index for vector_data to speed up vector queries
+        Index(
+            "ix_embeddings_vector_data_hnsw",
+            "vector_data",
+            postgresql_using="hnsw",
+            postgresql_ops={"vector_data": "vector_cosine_ops"},
+        ),
+    )

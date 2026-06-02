@@ -15,8 +15,7 @@ class ProjectEmbeddingPayload(BaseModel):
     description: str | None = None
 
 
-class EmbeddingResponse(BaseModel):
+class RecommendationResultItem(BaseModel):
     id: uuid.UUID
-    entity_id: uuid.UUID
-    entity_type: str
-    message: str
+    position: int
+    metadata: dict | None = None
