@@ -61,6 +61,9 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
+      - name: Download SpaCy model
+        run: uv run python -m spacy download fr_core_news_sm
+
       - name: Run linter
         run: uv run ruff check src/ --fix
 
