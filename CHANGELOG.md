@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-04-24
+
+### Added
+- Rajouuté script de seeds
+- Nouvelle migration alemenbic pour supporter GIN sur les payloads JSONB
+- Support des interactions users (like, join project) dans le matchmaking
+- Ajout d'une route de projet trending
+
 ### Changed
 - Remplacé `TextProcessor` par `NLPManager` avec spaCy pour normalisation et tokenization de texte
+
+### Fixed
+- Changmements mineurs du docker-compose
+- Plusieur fixes
 
 ## [2.0.0] - 2026-04-24
 

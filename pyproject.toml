@@ -36,6 +36,7 @@ start-worker = "src.worker.cli:main"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"] # Active pycodestyle, pyflakes et isort

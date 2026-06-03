@@ -92,7 +92,8 @@ class MatchmakingService:
     async def get_trending_projects(self, limit: int = 10) -> list[RecommendationResultItem]:
         """
         Get trending projects based on recent interactions and time-decay.
-        This will return projects that are currently popular, giving more weight to recent interactions.
+        This will return projects that are currently popular, giving more weight to recent
+        interactions.
         """
         trending_projects = await self.embedding_repo.get_trending_projects(limit=limit)
 

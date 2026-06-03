@@ -22,8 +22,10 @@ async def get_projects_for_user(
 ):
     """
     Endpoint to get project recommendations for a user.
-    Optional query parameter 'tags' can be used to filter projects by specific tags. (not implemented yet)
-    Use mean polling to fetch the most relevant projects for the user based on their identity and interests.
+    Optional query parameter 'tags' can be used to filter projects by specific tags.
+    (not implemented yet)
+    Use mean polling to fetch the most relevant projects for the user based on their identity
+    and interests.
     """
     logger.info(
         f"Fetching project recommendations for user {user_id} (tags: {tags}, limit: {limit})"

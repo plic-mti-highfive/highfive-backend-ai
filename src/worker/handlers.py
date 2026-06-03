@@ -49,7 +49,13 @@ async def handle_user_interaction(
 ) -> None:
     """
     Process a user interaction to update their INTEREST vector.
-    Expected data payload: { "tenant_id": "...", "user_id": "...", "project_id": "...", "interaction_type": "LIKE" }
+    Expected data payload:
+    {
+        "tenant_id": "...",
+        "user_id": "...",
+        "project_id": "...",
+        "interaction_type": "LIKE"
+    }
     """
     tenant_id = uuid.UUID(data["tenant_id"])
     user_id = uuid.UUID(data["user_id"])
