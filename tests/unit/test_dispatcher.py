@@ -101,7 +101,9 @@ def test_job_registry_contains_expected_handlers():
     """Test that JOB_REGISTRY has expected handlers registered."""
     assert "update_user_identity" in JOB_REGISTRY
     assert "update_project_identity" in JOB_REGISTRY
-    assert len(JOB_REGISTRY) == 2
+    assert "project_stats_updated" in JOB_REGISTRY
+    assert "user_interacted_with_project" in JOB_REGISTRY
+    assert len(JOB_REGISTRY) == 4
 
 
 @pytest.mark.asyncio

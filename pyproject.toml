@@ -8,6 +8,7 @@ dependencies = [
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
     "bullmq>=2.20.4",
+    "faker>=40.15.0",
     "fastapi>=0.135.2",
     "openai>=2.30.0",
     "pgvector>=0.4.2",
@@ -15,6 +16,7 @@ dependencies = [
     "pyjwt>=2.12.1",
     "pyyaml>=6.0.3",
     "redis>=5.3.1",
+    "spacy>=3.8.14",
     "sqlalchemy>=2.0.48",
     "uvicorn>=0.42.0",
 ]
@@ -34,6 +36,7 @@ start-worker = "src.worker.cli:main"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"] # Active pycodestyle, pyflakes et isort

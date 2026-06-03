@@ -37,16 +37,16 @@ async def get_current_tenant_id(
     """
     Dependency that extracts tenant_id from the user payload.
     """
-    tenant_id_str = user.get("tenant_id")
+    tenant_id_str = user.get("tenantId")
     if not tenant_id_str:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenant_id in token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing tenantId in token"
         )
     try:
         return uuid.UUID(tenant_id_str)
     except ValueError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenant_id format"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenantId format"
         )
 
 

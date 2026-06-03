@@ -19,9 +19,10 @@ def setup_test_auth(test_tenant_id):
     Set up auth for each test with unique tenant_id.
     This ensures test isolation even if data persists in DB.
     """
+
     def override_get_current_user():
-        return {"sub": str(uuid.uuid4()), "tenant_id": str(test_tenant_id)}
-    
+        return {"sub": str(uuid.uuid4()), "tenantId": str(test_tenant_id)}
+
     app.dependency_overrides[get_current_user] = override_get_current_user
     yield
     app.dependency_overrides.clear()
@@ -49,7 +50,10 @@ async def test_get_projects_for_user_api(db_session, test_tenant_id):
         entity_id=project_id,
         vector_data=vector,
         vector_purpose=VectorPurpose.IDENTITY,
-        payload_metadata={},
+        payload_metadata={
+            "theme": "Informatique",
+            "sub_themes": ["Backend", "APIs"],
+        },
     )
     await db_session.commit()  # Necessary for AsyncClient to see data
 
@@ -65,4 +69,8 @@ async def test_get_projects_for_user_api(db_session, test_tenant_id):
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 1
-    assert data[0] == str(project_id)
+    assert data[0]["id"] == str(project_id)
+    assert data[0]["position"] == 0
+    assert data[0]["metadata"]["theme"] == "Informatique"
+    assert "Backend" in data[0]["metadata"]["sub_themes"]
+    assert "APIs" in data[0]["metadata"]["sub_themes"]

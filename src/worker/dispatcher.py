@@ -5,7 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.core.logger import get_logger, set_worker_id
 from src.infrastructure.llm_provider import ILLMProvider
-from src.worker.handlers import handle_project_identity, handle_user_identity
+from src.worker.handlers import (
+    handle_project_identity,
+    handle_project_stats_updated,
+    handle_user_identity,
+    handle_user_interaction,
+)
 
 logger = get_logger(__name__)
 
@@ -14,6 +19,8 @@ JobHandler = Callable[[dict, AsyncSession, ILLMProvider], Awaitable[None]]
 JOB_REGISTRY: Dict[str, JobHandler] = {
     "update_user_identity": handle_user_identity,
     "update_project_identity": handle_project_identity,
+    "user_interacted_with_project": handle_user_interaction,
+    "project_stats_updated": handle_project_stats_updated,
 }
 
 

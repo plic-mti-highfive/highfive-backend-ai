@@ -14,31 +14,32 @@ FastAPI backend pour les tâches NLP et LLM. Gère le chat avec génération de 
 
 Créez un fichier `.env` à la racine du projet (voir `.env.exemple`):
 
-```env
-# Server
 ENV=dev
-JWT_SECRET=your-secret-key-here-change-in-production
+JWT_SECRET=a-string-secret-at-least-256-bits-long
+OPENAI_API_KEY=your-openai-api-key
 
-# Database
-DATABASE_URI=postgresql+asyncpg://admin:admin@localhost:5432/highfive
+WORKERS_CONFIG_PATH=config/workers.yaml
 
-# LLM Provider
-OPENAI_API_KEY=sk-...
+# Database (PostgreSQL)
+DB_HOST=localhost
+DB_PORT=5436
+DB_USERNAME=admin
+DB_PASSWORD=admin
+DB_DATABASE=highfive
+DATABASE_URI=postgresql+asyncpg://admin:admin@localhost:5436/highfive
 
-# Redis & Workers
+# Redis (BullMQ)
 REDIS_HOST=localhost
 REDIS_PORT=6379
-WORKERS_CONFIG_PATH=config/workers.yaml
-```
+REDIS_INSIGHT_PORT=5540
 
 **Variables importantes:**
 - `ENV`: `dev` ou `prod` (affecte logs SQL et comportement serveur)
-- `JWT_SECRET`: Clé secrète pour les tokens JWT (à générer de façon sécurisée en prod)
+- `JWT_SECRET`: Clé secrète pour les tokens JWT
 - `DATABASE_URI`: URI de connexion PostgreSQL avec asyncpg
 - `OPENAI_API_KEY`: Clé API OpenAI pour LLM
 - `REDIS_HOST`: Hostname du serveur Redis (défaut: `localhost`)
 - `REDIS_PORT`: Port du serveur Redis (défaut: `6379`)
-- `WORKERS_CONFIG_PATH`: Chemin vers la configuration des workers (défaut: `config/workers.yaml`)
 
 ## Lancer l'application
 
@@ -56,16 +57,16 @@ source .venv/bin/activate  # Linux/Mac
 
 ```bash
 # Terminal 1 - Démarrer la base de données et Redis
-docker compose up db redis redisinsight
+docker compose up -d db redis redisinsight
 
 # Terminal 2 - Appliquer les migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # Terminal 3 - Lancer le serveur
-python main.py
+uv run python main.py
 
-# Terminal 4 - Lancer le worker (optionnel pour jobs asynchrones)
-python -m src.worker.cli
+# Terminal 4 - Lancer le worker
+uv run python -m src.worker.cli
 ```
 
 Accès:
@@ -79,7 +80,7 @@ Accès:
 
 ```bash
 # Tout en un : API, Worker, DB, Redis, RedisInsight
-docker compose up --build
+docker compose up -d --build
 ```
 
 Les deux approches lancent le serveur avec hot reload (uvicorn en mode dev).

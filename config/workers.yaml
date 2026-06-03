@@ -1,14 +1,14 @@
 workers:
-  - name: "high_priority"
-    queue: "high_priority"
+  - name: "ai_tasks"
+    queue: "ai_tasks"
     concurrency: 5
     max_retries: 3
     retry_backoff_ms: 1000
     remove_on_complete: true
     remove_on_fail: false
 
-  - name: "default"
-    queue: "default"
+  - name: "fast_events"
+    queue: "fast_events"
     concurrency: 2
     max_retries: 2
     retry_backoff_ms: 2000
