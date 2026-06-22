@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-06-22
+
+### Fixed
+- Add an update function in repo to make update to vectors in services instead of recreating.
+
 ## [2.1.0] - 2026-04-24
 
 ### Added
