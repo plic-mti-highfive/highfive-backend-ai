@@ -34,6 +34,25 @@ class EmbeddingRepository:
         await self.db.flush()
         return db_obj
 
+    async def update(
+        self,
+        entity_id: uuid.UUID,
+        vector_purpose: VectorPurpose,
+        vector_data: list[float],
+        payload_metadata: dict,
+    ) -> Embedding:
+        """Update an existing embedding for the current tenant."""
+        embedding = await self.get_by_entity_and_purpose(entity_id, vector_purpose)
+        if not embedding:
+            raise ValueError(
+                f"Embedding not found for entity {entity_id} with purpose {vector_purpose}"
+            )
+        
+        embedding.vector_data = vector_data
+        embedding.payload_metadata = payload_metadata
+        await self.db.flush()
+        return embedding
+
     async def get_by_entity(self, entity_id: uuid.UUID) -> Embedding | None:
         """
         Get an embedding by entity_id for the current tenant.

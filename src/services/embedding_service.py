@@ -136,14 +136,30 @@ class EmbeddingService:
         vector_data = await self.llm_provider.generate_embedding(text_to_vectorize)
         logger.debug(f"Embedding generated for user {user_id}")
 
-        await self.embedding_repo.create(
-            entity_type=EntityType.USER,
-            entity_id=user_id,
-            vector_data=vector_data,
-            vector_purpose=VectorPurpose.IDENTITY,
-            payload_metadata={"skills_count": len(payload.get("skills", []))},
+        payload_metadata = {"skills_count": len(payload.get("skills", []))}
+
+        # Check if embedding already exists
+        existing_embedding = await self.embedding_repo.get_by_entity_and_purpose(
+            entity_id=user_id, purpose=VectorPurpose.IDENTITY
         )
-        logger.info(f"User identity vector saved successfully for user {user_id}")
+
+        if existing_embedding:
+            await self.embedding_repo.update(
+                entity_id=user_id,
+                vector_purpose=VectorPurpose.IDENTITY,
+                vector_data=vector_data,
+                payload_metadata=payload_metadata,
+            )
+            logger.info(f"User identity vector updated successfully for user {user_id}")
+        else:
+            await self.embedding_repo.create(
+                entity_type=EntityType.USER,
+                entity_id=user_id,
+                vector_data=vector_data,
+                vector_purpose=VectorPurpose.IDENTITY,
+                payload_metadata=payload_metadata,
+            )
+            logger.info(f"User identity vector created successfully for user {user_id}")
 
     async def process_project_identity(
         self,
@@ -170,11 +186,25 @@ class EmbeddingService:
             "sub_themes": extracted_meta.get("sub_themes", []),
         }
 
-        await self.embedding_repo.create(
-            entity_type=EntityType.PROJECT,
-            entity_id=project_id,
-            vector_data=vector_data,
-            vector_purpose=VectorPurpose.IDENTITY,
-            payload_metadata=final_metadata,
+        # Check if embedding already exists
+        existing_embedding = await self.embedding_repo.get_by_entity_and_purpose(
+            entity_id=project_id, purpose=VectorPurpose.IDENTITY
         )
-        logger.info(f"Project identity vector saved successfully for project {project_id}")
+
+        if existing_embedding:
+            await self.embedding_repo.update(
+                entity_id=project_id,
+                vector_purpose=VectorPurpose.IDENTITY,
+                vector_data=vector_data,
+                payload_metadata=final_metadata,
+            )
+            logger.info(f"Project identity vector updated successfully for project {project_id}")
+        else:
+            await self.embedding_repo.create(
+                entity_type=EntityType.PROJECT,
+                entity_id=project_id,
+                vector_data=vector_data,
+                vector_purpose=VectorPurpose.IDENTITY,
+                payload_metadata=final_metadata,
+            )
+            logger.info(f"Project identity vector created successfully for project {project_id}")
