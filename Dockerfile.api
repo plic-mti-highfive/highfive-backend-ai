@@ -18,6 +18,8 @@ ENV VERSION=${VERSION}
 
 COPY main.py ./
 COPY ./src ./src
+COPY alembic.ini ./
+COPY ./migrations ./migrations
 
 EXPOSE 8000
 
