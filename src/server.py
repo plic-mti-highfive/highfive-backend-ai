@@ -36,17 +36,9 @@ def create_app() -> FastAPI:
     # Middlewares
     app.add_middleware(TimingMiddleware)
 
-    origins = [
-        "http://localhost",
-        "http://localhost:3000",  # Core backend
-        "http://localhost:5173",  # Frontend (Vite)
-        "http://localhost:8080",  # Canvas backend
-        "http://localhost:8000",
-    ]
-
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

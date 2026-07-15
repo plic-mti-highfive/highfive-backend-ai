@@ -33,8 +33,25 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "127.0.0.1"
     REDIS_PORT: int = 6379
     WORKERS_CONFIG_PATH: str = "config/workers.yaml"
+    # Origines autorisees par CORS, separees par des virgules. Surchargeable via
+    # l'environnement : Vite bascule tout seul sur un autre port quand 5173 est
+    # occupe, et une origine absente d'ici fait echouer le preflight en 400 —
+    # ce qui vide la page d'accueil du front.
+    CORS_ORIGINS: str = (
+        "http://localhost,"
+        "http://localhost:3000,"  # Core backend
+        "http://localhost:5173,"  # Frontend (Vite)
+        "http://localhost:5174,"  # Frontend (Vite, port de repli)
+        "http://localhost:8080,"  # Canvas backend
+        "http://localhost:8000"
+    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """CORS_ORIGINS parse en liste, vides ignores."""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     @property
     def redis_opts(self) -> dict:
