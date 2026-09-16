@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    container_name: dev_highfive_backend_ai
+    container_name: highfive_ai_backend
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -25,7 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    container_name: dev_highfive_backend_ai_worker
+    container_name: highfive_ai_worker
     restart: unless-stopped
     env_file:
       - .env
@@ -47,7 +47,7 @@ services:
   # Utils
   db:
     image: pgvector/pgvector:pg16
-    container_name: dev_highfive_db
+    container_name: highfive_ai_db
     restart: unless-stopped
     ports:
       - "${DB_PORT}:5432"
@@ -65,7 +65,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: dev_highfive_redis
+    container_name: highfive_ai_redis
     restart: unless-stopped
     ports:
       - "${REDIS_PORT}:6379"
