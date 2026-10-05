@@ -115,8 +115,9 @@ async def status_check(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=response)
 
     if not is_fully_operational:
+        # Conforme au docstring : « degraded » = DB up mais Redis/workers down. L'API sert encore
+        # les recommandations, on répond donc 200 (seule l'indisponibilité de la DB donne 503).
         logger.warning(f"Health check: System is degraded - {response}")
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=response)
 
     return response
 
