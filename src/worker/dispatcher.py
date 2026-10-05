@@ -1,3 +1,4 @@
+import asyncio
 from typing import Awaitable, Callable, Dict
 
 from bullmq import Job
@@ -34,10 +35,16 @@ class JobDispatcher:
         session_maker: async_sessionmaker,
         llm_provider: ILLMProvider,
         worker_id: str,
+        max_retries: int = 0,
+        retry_backoff_ms: int = 1000,
     ):
         self.session_maker = session_maker
         self.llm_provider = llm_provider
         self.worker_id = worker_id
+        # Le core publie ses jobs sans option `attempts` (1 seule tentative BullMQ) : les
+        # retries de workers.yaml sont donc appliqués ici, en mémoire, avec backoff exponentiel.
+        self.max_retries = max_retries
+        self.retry_backoff_ms = retry_backoff_ms
 
     async def process(self, job: Job, job_token: str) -> str:
         """
@@ -52,13 +59,21 @@ class JobDispatcher:
             logger.error(f"No handler registered for job: {job.name}")
             raise ValueError(f"No handler registered for job: {job.name}")
 
-        async with self.session_maker() as session:
-            try:
-                await handler(job.data, session, self.llm_provider)
-                await session.commit()
-                logger.info(f"Job {job.name} (ID: {job.id}) completed successfully")
-                return "Success"
-            except Exception as e:
-                logger.error(f"Job {job.name} (ID: {job.id}) failed: {str(e)}")
-                await session.rollback()
-                raise e
+        for attempt in range(self.max_retries + 1):
+            async with self.session_maker() as session:
+                try:
+                    await handler(job.data, session, self.llm_provider)
+                    await session.commit()
+                    logger.info(f"Job {job.name} (ID: {job.id}) completed successfully")
+                    return "Success"
+                except Exception as e:
+                    await session.rollback()
+                    if attempt >= self.max_retries:
+                        logger.error(f"Job {job.name} (ID: {job.id}) failed: {str(e)}")
+                        raise e
+                    delay = self.retry_backoff_ms * (2**attempt) / 1000
+                    logger.warning(
+                        f"Job {job.name} (ID: {job.id}) failed ({e}), "
+                        f"retry {attempt + 1}/{self.max_retries} in {delay:.1f}s"
+                    )
+            await asyncio.sleep(delay)
