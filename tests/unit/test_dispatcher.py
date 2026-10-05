@@ -137,3 +137,38 @@ async def test_process_empty_job_data(session_maker, mock_llm_provider):
     call_args = mock_handler.call_args
     assert call_args[0][0] == {}  # job data
     assert call_args[0][2] == mock_llm_provider
+
+
+@pytest.mark.asyncio
+async def test_failed_job_is_retried_in_process_then_succeeds(
+    session_maker, mock_llm_provider, mock_job
+):
+    dispatcher = JobDispatcher(
+        session_maker, mock_llm_provider, "w", max_retries=2, retry_backoff_ms=1
+    )
+    handler = AsyncMock(side_effect=[ValueError("pas encore"), ValueError("pas encore"), None])
+    with patch.dict(JOB_REGISTRY, {"update_user_identity": handler}):
+        assert await dispatcher.process(mock_job, "token") == "Success"
+    assert handler.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_job_fails_after_max_retries(session_maker, mock_llm_provider, mock_job):
+    dispatcher = JobDispatcher(
+        session_maker, mock_llm_provider, "w", max_retries=2, retry_backoff_ms=1
+    )
+    handler = AsyncMock(side_effect=ValueError("toujours"))
+    with patch.dict(JOB_REGISTRY, {"update_user_identity": handler}):
+        with pytest.raises(ValueError, match="toujours"):
+            await dispatcher.process(mock_job, "token")
+    assert handler.call_count == 3
+
+
+@pytest.mark.asyncio
+async def test_no_retry_by_default(session_maker, mock_llm_provider, mock_job):
+    dispatcher = JobDispatcher(session_maker, mock_llm_provider, "w")
+    handler = AsyncMock(side_effect=ValueError("x"))
+    with patch.dict(JOB_REGISTRY, {"update_user_identity": handler}):
+        with pytest.raises(ValueError):
+            await dispatcher.process(mock_job, "token")
+    assert handler.call_count == 1
