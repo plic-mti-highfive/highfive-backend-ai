@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.infrastructure.llm.embedding_batcher import EmbeddingBatcher, LRUCache
+from src.infrastructure.llm.embedding_batcher import EmbeddingBatcher, LRUCache, text_key
 from src.infrastructure.llm.openai_provider import OpenAIProvider
 
 
@@ -97,3 +97,55 @@ async def test_openai_provider_batches_and_keeps_order():
     assert len(inputs) == 1
     with pytest.raises(ValueError):
         await provider.generate_embedding("  ")
+
+
+async def test_window_flushes_partial_batch_without_reaching_max_size():
+    calls = []
+
+    async def fn(texts):
+        calls.append(list(texts))
+        return [[float(len(t))] for t in texts]
+
+    b = EmbeddingBatcher(fn, namespace="t", max_batch_size=10, window_seconds=0.01)
+    out = await asyncio.gather(b.embed("a"), b.embed("bb"))
+    assert out == [[1.0], [2.0]]
+    assert calls == [["a", "bb"]]
+
+
+async def test_namespace_isolates_cache_keys():
+    async def fn(texts):
+        return [[1.0] for _ in texts]
+
+    assert text_key("m1", "x") != text_key("m2", "x")
+    assert text_key("m1", "x") == text_key("m1", "x")
+
+
+async def test_provider_returning_wrong_count_fails_all_waiters():
+    async def fn(texts):
+        return [[1.0]]
+
+    b = EmbeddingBatcher(fn, namespace="t", window_seconds=0.005)
+    results = await asyncio.gather(b.embed("a"), b.embed("b"), return_exceptions=True)
+    assert all(isinstance(r, RuntimeError) for r in results)
+
+
+async def test_cancelled_caller_does_not_fail_other_waiters():
+    async def fn(texts):
+        await asyncio.sleep(0.02)
+        return [[1.0] for _ in texts]
+
+    b = EmbeddingBatcher(fn, namespace="t", window_seconds=0.005)
+    t1 = asyncio.create_task(b.embed("same"))
+    t2 = asyncio.create_task(b.embed("same"))
+    await asyncio.sleep(0.01)
+    t1.cancel()
+    assert await t2 == [1.0]
+
+
+def test_lru_get_refreshes_recency():
+    c = LRUCache(2)
+    c.put("a", 1)
+    c.put("b", 2)
+    c.get("a")
+    c.put("c", 3)
+    assert c.get("b") is None and c.get("a") == 1 and len(c) == 2
