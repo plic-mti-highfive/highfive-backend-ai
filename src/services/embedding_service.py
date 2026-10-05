@@ -144,8 +144,7 @@ class EmbeddingService:
         logger.info(f"User {user_id} interest vector successfully moved by {weight * 100}%.")
 
     async def _build_text(self, payload: dict, schema: dict) -> str:
-        # spaCy est CPU-bound : hors de la boucle d'événements pour ne pas bloquer les autres jobs
-        return await asyncio.to_thread(NLPManager.build_text_from_schema, payload, schema)
+        return await NLPManager.build_text_from_schema_async(payload, schema)
 
     async def process_user_identity(
         self,
