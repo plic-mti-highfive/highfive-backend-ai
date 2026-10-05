@@ -12,12 +12,15 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/matchmaking", tags=["Matchmaking"])
 
+# Borne haute : un `limit` négatif faisait échouer SQL (500), un `limit` énorme chargeait la table.
+MAX_LIMIT = 500
+
 
 @router.get("/users/{user_id}/projects", response_model=List[RecommendationResultItem])
 async def get_projects_for_user(
     user_id: uuid.UUID,
     tags: List[str] | None = Query(default=None),
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=MAX_LIMIT),
     matchmaking_service: MatchmakingService = Depends(get_matchmaking_service),
 ):
     """
@@ -40,7 +43,7 @@ async def get_projects_for_user(
 @router.get("/projects/{project_id}/users", response_model=List[RecommendationResultItem])
 async def get_users_for_project(
     project_id: uuid.UUID,
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=MAX_LIMIT),
     matchmaking_service: MatchmakingService = Depends(get_matchmaking_service),
 ):
     """Endpoint to get user recommendations for a project."""
@@ -54,7 +57,7 @@ async def get_users_for_project(
 
 @router.get("/trending", response_model=List[RecommendationResultItem])
 async def get_trending_projects(
-    limit: int = 10,
+    limit: int = Query(default=10, ge=1, le=MAX_LIMIT),
     matchmaking_service: MatchmakingService = Depends(get_matchmaking_service),
 ):
     """
