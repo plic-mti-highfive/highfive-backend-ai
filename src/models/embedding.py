@@ -2,7 +2,7 @@ import enum
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, DateTime, Enum, Index, func
+from sqlalchemy import Column, DateTime, Enum, Index, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import declarative_base, mapped_column
 
@@ -49,10 +49,21 @@ class Embedding(Base):
     # payload_metadata JSONB
     payload_metadata = Column(JSONB, nullable=True)
 
+    # content_hash : SHA-256 du contenu source (+ modèle), pour ignorer les recalculs inutiles
+    content_hash = Column(String(64), nullable=True)
+
     # updated_at TIMESTAMP DEFAULT NOW()
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
+        # Une seule ligne par (tenant, entité, usage) : permet l'upsert atomique
+        Index(
+            "uq_embeddings_tenant_entity_purpose",
+            "tenant_id",
+            "entity_id",
+            "vector_purpose",
+            unique=True,
+        ),
         # GIN index for payload_metadata to speed up JSONB queries
         Index(
             "ix_embeddings_payload_metadata_gin",
