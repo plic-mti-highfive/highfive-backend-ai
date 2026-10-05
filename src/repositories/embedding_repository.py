@@ -1,11 +1,17 @@
 import uuid
 
-from sqlalchemy import Float, cast, func, nulls_last, select
-from sqlalchemy.dialects.postgresql import array
+from sqlalchemy import Float, Row, cast, func, literal, nulls_last, select, update
+from sqlalchemy.dialects.postgresql import JSONB, array
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.constants import TRENDING_GRAVITY
 from src.models.embedding import Embedding, EntityType, VectorPurpose
+
+
+def _merge_jsonb(column, other):
+    """Expression SQL `coalesce(column, '{}') || other` (fusion JSONB, `other` prioritaire)."""
+    return func.coalesce(column, literal({}, JSONB)).op("||")(other)
 
 
 class EmbeddingRepository:
@@ -47,7 +53,7 @@ class EmbeddingRepository:
             raise ValueError(
                 f"Embedding not found for entity {entity_id} with purpose {vector_purpose}"
             )
-        
+
         embedding.vector_data = vector_data
         embedding.payload_metadata = payload_metadata
         await self.db.flush()
@@ -59,9 +65,13 @@ class EmbeddingRepository:
 
         RLS will enforce tenant_id isolation.
         """
-        stmt = select(Embedding).where(Embedding.entity_id == entity_id)
+        stmt = (
+            select(Embedding)
+            .where(Embedding.entity_id == entity_id, Embedding.tenant_id == self.tenant_id)
+            .limit(1)
+        )
         result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
+        return result.scalars().first()
 
     async def get_all(self) -> list[Embedding]:
         """
@@ -69,9 +79,9 @@ class EmbeddingRepository:
 
         RLS will enforce tenant_id isolation.
         """
-        stmt = select(Embedding)
+        stmt = select(Embedding).where(Embedding.tenant_id == self.tenant_id)
         result = await self.db.execute(stmt)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     async def get_by_entity_and_purpose(
         self, entity_id: uuid.UUID, purpose: VectorPurpose
@@ -82,10 +92,129 @@ class EmbeddingRepository:
         RLS will enforce tenant_id isolation.
         """
         stmt = select(Embedding).where(
-            Embedding.entity_id == entity_id, Embedding.vector_purpose == purpose
+            Embedding.entity_id == entity_id,
+            Embedding.vector_purpose == purpose,
+            Embedding.tenant_id == self.tenant_id,
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_many(
+        self, entity_ids: list[uuid.UUID], purposes: list[VectorPurpose]
+    ) -> dict[tuple[uuid.UUID, VectorPurpose], Embedding]:
+        """Récupère plusieurs embeddings en une seule requête, indexés par (entité, usage)."""
+        stmt = select(Embedding).where(
+            Embedding.entity_id.in_(entity_ids),
+            Embedding.vector_purpose.in_(purposes),
+            Embedding.tenant_id == self.tenant_id,
+        )
+        result = await self.db.execute(stmt)
+        return {(e.entity_id, e.vector_purpose): e for e in result.scalars().all()}
+
+    async def get_for_update(
+        self, entity_id: uuid.UUID, purpose: VectorPurpose
+    ) -> Embedding | None:
+        """Comme get_by_entity_and_purpose, mais verrouille la ligne (FOR UPDATE)."""
+        stmt = (
+            select(Embedding)
+            .where(
+                Embedding.entity_id == entity_id,
+                Embedding.vector_purpose == purpose,
+                Embedding.tenant_id == self.tenant_id,
+            )
+            .with_for_update()
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_content_hash(self, entity_id: uuid.UUID, purpose: VectorPurpose) -> str | None:
+        """Hash du contenu source déjà vectorisé (sans charger le vecteur de 1536 floats)."""
+        stmt = select(Embedding.content_hash).where(
+            Embedding.entity_id == entity_id,
+            Embedding.vector_purpose == purpose,
+            Embedding.tenant_id == self.tenant_id,
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def upsert(
+        self,
+        entity_type: EntityType,
+        entity_id: uuid.UUID,
+        vector_data: list[float],
+        vector_purpose: VectorPurpose,
+        payload_metadata: dict,
+        content_hash: str | None = None,
+    ) -> None:
+        """
+        Insère ou met à jour atomiquement (INSERT ... ON CONFLICT) l'embedding d'une entité.
+
+        Les métadonnées sont fusionnées (`||`) avec l'existant : les compteurs écrits par d'autres
+        jobs (ex: `likes`) ne sont pas écrasés par une mise à jour d'identité.
+        """
+        stmt = pg_insert(Embedding).values(
+            tenant_id=self.tenant_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            vector_data=vector_data,
+            vector_purpose=vector_purpose,
+            payload_metadata=payload_metadata,
+            content_hash=content_hash,
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["tenant_id", "entity_id", "vector_purpose"],
+            set_={
+                "vector_data": stmt.excluded.vector_data,
+                "payload_metadata": func.coalesce(
+                    Embedding.payload_metadata, literal({}, JSONB)
+                ).op("||")(stmt.excluded.payload_metadata),
+                "content_hash": stmt.excluded.content_hash,
+                "updated_at": func.now(),
+            },
+        )
+        await self.db.execute(stmt)
+
+    async def insert_if_absent(
+        self,
+        entity_type: EntityType,
+        entity_id: uuid.UUID,
+        vector_data: list[float],
+        vector_purpose: VectorPurpose,
+        payload_metadata: dict,
+    ) -> None:
+        """INSERT ... ON CONFLICT DO NOTHING : sûr si deux jobs initialisent la même ligne."""
+        stmt = (
+            pg_insert(Embedding)
+            .values(
+                tenant_id=self.tenant_id,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                vector_data=vector_data,
+                vector_purpose=vector_purpose,
+                payload_metadata=payload_metadata,
+            )
+            .on_conflict_do_nothing(index_elements=["tenant_id", "entity_id", "vector_purpose"])
+        )
+        await self.db.execute(stmt)
+
+    async def patch_metadata(
+        self, entity_id: uuid.UUID, purpose: VectorPurpose, patch: dict
+    ) -> int:
+        """Fusionne `patch` dans payload_metadata (atomique). Retourne le nombre de lignes."""
+        stmt = (
+            update(Embedding)
+            .where(
+                Embedding.entity_id == entity_id,
+                Embedding.vector_purpose == purpose,
+                Embedding.tenant_id == self.tenant_id,
+            )
+            .values(
+                payload_metadata=_merge_jsonb(Embedding.payload_metadata, literal(patch, JSONB))
+            )
+            .execution_options(synchronize_session=False)
+        )
+        result = await self.db.execute(stmt)
+        return result.rowcount
 
     async def find_nearest_neighbors(
         self,
@@ -94,7 +223,7 @@ class EmbeddingRepository:
         target_purpose: VectorPurpose,
         limit: int = 10,
         min_similarity: float = 0.5,
-    ) -> list[Embedding]:
+    ) -> list[Row]:
         """
         Find nearest neighbors to a target vector for a given entity type and purpose.
 
@@ -102,18 +231,20 @@ class EmbeddingRepository:
         Default 0.5 filters weak matches.
         RLS will enforce tenant_id isolation.
         """
+        distance = Embedding.vector_data.cosine_distance(target_vector).label("distance")
         stmt = (
-            select(Embedding)
+            select(Embedding.entity_id, Embedding.payload_metadata)
             .where(
+                Embedding.tenant_id == self.tenant_id,
                 Embedding.entity_type == target_entity_type,
                 Embedding.vector_purpose == target_purpose,
-                Embedding.vector_data.cosine_distance(target_vector) < min_similarity,
+                distance < min_similarity,
             )
-            .order_by(Embedding.vector_data.cosine_distance(target_vector))
+            .order_by(distance)
             .limit(limit)
         )
         result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.all())
 
     def _get_trending_score_expr(self):
         """
@@ -128,14 +259,14 @@ class EmbeddingRepository:
 
         return trending_score
 
-    async def get_trending_projects(self, limit: int = 10) -> list[Embedding]:
+    async def get_trending_projects(self, limit: int = 10) -> list[Row]:
         """
         Get trending projects for the current tenant.
         """
         trending_expr = self._get_trending_score_expr()
 
         stmt = (
-            select(Embedding)
+            select(Embedding.entity_id, Embedding.payload_metadata)
             .where(
                 Embedding.entity_type == EntityType.PROJECT, Embedding.tenant_id == self.tenant_id
             )
@@ -144,21 +275,21 @@ class EmbeddingRepository:
         )
 
         result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        return list(result.all())
 
     async def search_projects(
         self,
         target_vector: list[float] | None = None,
         tags_filter: list[str] | None = None,
         limit: int = 10,
-    ) -> list[Embedding]:
+    ) -> list[Row]:
         """
         Search for projects using a hybrid approach:
         - If a target_vector is provided, perform AI matchmaking.
         - If no target_vector is provided (e.g. cold start), fall back to trending.
         - If tags are provided, filter projects that have matching tags in their payload_metadata.
         """
-        stmt = select(Embedding).where(
+        stmt = select(Embedding.entity_id, Embedding.payload_metadata).where(
             Embedding.entity_type == EntityType.PROJECT, Embedding.tenant_id == self.tenant_id
         )
 
@@ -178,4 +309,4 @@ class EmbeddingRepository:
         stmt = stmt.limit(limit)
         result = await self.db.execute(stmt)
 
-        return list(result.scalars().all())
+        return list(result.all())

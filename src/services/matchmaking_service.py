@@ -63,12 +63,11 @@ class MatchmakingService:
         """
 
         target_vector = None
-        interest_emb = await self.embedding_repo.get_by_entity_and_purpose(
-            user_id, VectorPurpose.INTEREST
+        embeddings = await self.embedding_repo.get_many(
+            [user_id], [VectorPurpose.INTEREST, VectorPurpose.IDENTITY]
         )
-        identity_emb = await self.embedding_repo.get_by_entity_and_purpose(
-            user_id, VectorPurpose.IDENTITY
-        )
+        interest_emb = embeddings.get((user_id, VectorPurpose.INTEREST))
+        identity_emb = embeddings.get((user_id, VectorPurpose.IDENTITY))
 
         # Dual Vector
         if interest_emb and identity_emb:
