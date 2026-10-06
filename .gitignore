@@ -230,3 +230,4 @@ junit.xml
 
 # Ignore minio data
 minio/data/
+load/seed_data.json

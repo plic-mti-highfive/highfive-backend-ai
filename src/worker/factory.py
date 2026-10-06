@@ -52,7 +52,13 @@ class WorkerFactory:
                 f"concurrency={worker_cfg.concurrency}"
             )
 
-            dispatcher = JobDispatcher(self.session_maker, self.llm_provider, worker_cfg.name)
+            dispatcher = JobDispatcher(
+                self.session_maker,
+                self.llm_provider,
+                worker_cfg.name,
+                max_retries=worker_cfg.max_retries,
+                retry_backoff_ms=worker_cfg.retry_backoff_ms,
+            )
 
             worker = Worker(
                 worker_cfg.queue,

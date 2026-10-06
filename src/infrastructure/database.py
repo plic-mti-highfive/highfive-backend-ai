@@ -16,8 +16,16 @@ AsyncSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_
 
 
 async def set_tenant_context(session: AsyncSession, tenant_id: uuid.UUID) -> None:
-    """Set the tenant_id in the PostgreSQL session context for RLS."""
-    await session.execute(text(f"SET app.current_tenant_id = '{tenant_id}'"))
+    """
+    Set the tenant_id in the PostgreSQL context for RLS.
+
+    Portée transaction (`is_local=true`) : le réglage disparaît au commit/rollback et ne peut
+    donc pas fuiter vers la requête suivante qui réutiliserait la même connexion du pool.
+    """
+    await session.execute(
+        text("SELECT set_config('app.current_tenant_id', :tenant, true)"),
+        {"tenant": str(tenant_id)},
+    )
 
 
 @asynccontextmanager

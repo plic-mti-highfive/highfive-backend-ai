@@ -1,13 +1,11 @@
 import uuid
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
 
 from src.core.constants import InteractionType
 from src.core.logger import get_logger
 from src.infrastructure.llm_provider import ILLMProvider
-from src.models.embedding import Embedding, VectorPurpose
+from src.models.embedding import VectorPurpose
 from src.repositories.embedding_repository import EmbeddingRepository
 from src.services.embedding_service import EmbeddingService
 
@@ -87,22 +85,13 @@ async def handle_project_stats_updated(
 
     logger.info(f"Updating stats for project {project_id} (likes: {new_likes_count})")
 
-    stmt = select(Embedding).where(
-        Embedding.entity_id == project_id,
-        Embedding.vector_purpose == VectorPurpose.IDENTITY,
-        Embedding.tenant_id == tenant_id,
+    # UPDATE atomique (jsonb ||) : pas de lecture-modification-écriture qui écraserait un
+    # job d'identité concurrent.
+    repo = EmbeddingRepository(session, tenant_id)
+    updated = await repo.patch_metadata(
+        project_id, VectorPurpose.IDENTITY, {"likes": new_likes_count}
     )
-    result = await session.execute(stmt)
-    embedding = result.scalar_one_or_none()
-
-    if not embedding:
+    if not updated:
         raise ValueError(f"Project {project_id} not found. Retrying later...")
-
-    if not embedding.payload_metadata:
-        embedding.payload_metadata = {}
-
-    embedding.payload_metadata["likes"] = new_likes_count
-
-    flag_modified(embedding, "payload_metadata")
 
     logger.info(f"Stats successfully updated for project {project_id}")

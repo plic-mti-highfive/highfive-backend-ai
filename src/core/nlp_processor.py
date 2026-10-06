@@ -1,4 +1,6 @@
+import asyncio
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 import spacy
 
@@ -13,6 +15,9 @@ class NLPManager:
     """
 
     _nlp = None
+    # Un seul thread dédié : spaCy est CPU-bound, on libère la boucle d'événements sans
+    # sur-souscrire les CPU (to_thread en parallèle était ~20x plus lent par appel).
+    _executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="nlp")
 
     @classmethod
     def load_resources(cls) -> None:
@@ -21,7 +26,9 @@ class NLPManager:
         """
         if cls._nlp is None:
             logger.info("Loading spaCy NLP model 'fr_core_news_sm' into memory...")
-            cls._nlp = spacy.load("fr_core_news_sm")
+            # Le parser et le NER ne servent pas (lemmes + stop words uniquement) : ~2,5x plus
+            # rapide, sortie identique.
+            cls._nlp = spacy.load("fr_core_news_sm", exclude=["parser", "ner"])
             logger.info("NLP model loaded successfully.")
 
     @classmethod
@@ -82,3 +89,11 @@ class NLPManager:
                 parts.append(template.format(value))
 
         return " ".join(parts)
+
+    @classmethod
+    async def build_text_from_schema_async(cls, payload: dict, schema_mapping: dict) -> str:
+        """Même chose que build_text_from_schema, sans bloquer la boucle d'événements."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            cls._executor, cls.build_text_from_schema, payload, schema_mapping
+        )

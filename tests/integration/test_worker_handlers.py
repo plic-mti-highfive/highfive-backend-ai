@@ -91,7 +91,7 @@ async def test_handle_project_identity_integration(
 async def test_handle_user_identity_with_empty_payload(
     db_session: AsyncSession, test_tenant_id, mock_llm_provider
 ):
-    """Test user identity handler with empty payload."""
+    """Payload vide : rien à vectoriser, aucun appel provider ni embedding créé."""
     user_id = uuid.uuid4()
 
     await set_tenant_context(db_session, test_tenant_id)
@@ -113,14 +113,15 @@ async def test_handle_user_identity_with_empty_payload(
     result = await db_session.execute(stmt)
     saved_embedding = result.scalar_one_or_none()
 
-    assert saved_embedding is not None
+    assert saved_embedding is None
+    mock_llm_provider.generate_embedding.assert_not_called()
 
 
 @pytest.mark.asyncio
 async def test_handle_project_identity_with_empty_payload(
     db_session: AsyncSession, test_tenant_id, mock_llm_provider
 ):
-    """Test project identity handler with empty payload."""
+    """Payload vide : rien à vectoriser, aucun appel provider ni embedding créé."""
     project_id = uuid.uuid4()
 
     await set_tenant_context(db_session, test_tenant_id)
@@ -142,7 +143,9 @@ async def test_handle_project_identity_with_empty_payload(
     result = await db_session.execute(stmt)
     saved_embedding = result.scalar_one_or_none()
 
-    assert saved_embedding is not None
+    assert saved_embedding is None
+    mock_llm_provider.generate_embedding.assert_not_called()
+    mock_llm_provider.extract_metadata.assert_not_called()
 
 
 @pytest.mark.asyncio

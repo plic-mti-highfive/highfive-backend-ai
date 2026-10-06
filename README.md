@@ -107,6 +107,7 @@ python -m src.worker.cli
 | `pytest --cov`                | Tests avec coverage report            |
 | `pytest tests/unit`           | Tests unitaires uniquement            |
 | `pytest tests/integration`    | Tests d'intégration uniquement        |
+| `locust -f load/locustfile.py` | Test de charge (voir [load/README.md](load/README.md)) |
 | `ruff check src`              | Lint                                  |
 | `ruff format src`             | Format                                |
 
