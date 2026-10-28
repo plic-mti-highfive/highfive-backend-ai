@@ -207,3 +207,117 @@ async def test_identity_vectors_exist_after_seed(world, seeder):
             )
         ).all()
     assert len(rows) == 5
+
+
+# --- Sécurité JWT (compléments) ---
+
+import time  # noqa: E402
+
+import jwt  # noqa: E402
+
+from src.core.config import settings  # noqa: E402
+
+PROTECTED = [
+    "/api/v1/matchmaking/trending",
+    f"/api/v1/matchmaking/users/{uuid.uuid4()}/projects",
+    f"/api/v1/matchmaking/projects/{uuid.uuid4()}/users",
+]
+
+
+def _bearer(payload, secret=None, algorithm="HS256"):
+    token = jwt.encode(payload, secret or settings.JWT_SECRET, algorithm=algorithm)
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.mark.parametrize("path", PROTECTED)
+async def test_expired_token_is_401(client, path):
+    headers = _bearer({"sub": "u", "tenantId": str(uuid.uuid4()), "exp": int(time.time()) - 60})
+    r = await client.get(path, headers=headers)
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Expired token"
+
+
+@pytest.mark.parametrize("path", PROTECTED)
+async def test_wrong_signature_is_401(client, path):
+    headers = _bearer(
+        {"sub": "u", "tenantId": str(uuid.uuid4())}, secret="un-autre-secret-1234567890123456"
+    )
+    assert (await client.get(path, headers=headers)).status_code == 401
+
+
+@pytest.mark.parametrize("path", PROTECTED)
+async def test_unsigned_alg_none_token_is_rejected(client, path):
+    token = jwt.encode({"sub": "u", "tenantId": str(uuid.uuid4())}, key=None, algorithm="none")
+    r = await client.get(path, headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 401
+
+
+@pytest.mark.parametrize("path", PROTECTED)
+async def test_token_without_sub_is_401(client, path):
+    r = await client.get(path, headers=_bearer({"tenantId": str(uuid.uuid4())}))
+    assert r.status_code == 401
+
+
+@pytest.mark.parametrize("path", PROTECTED)
+async def test_missing_tenant_claim_is_401(client, path):
+    r = await client.get(path, headers=_bearer({"sub": "u"}))
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Missing tenantId in token"
+
+
+@pytest.mark.parametrize("scheme", ["Basic abc", "Token abc", ""])
+async def test_non_bearer_authorization_is_rejected(client, scheme):
+    r = await client.get("/api/v1/matchmaking/trending", headers={"Authorization": scheme})
+    assert r.status_code in (401, 403)
+
+
+# --- Isolation entre tenants (compléments) ---
+
+
+async def test_other_tenant_cannot_see_embeddings_via_any_endpoint(client, world, seeder):
+    """Un second tenant ne voit jamais les embeddings du premier (et réciproquement)."""
+    other_id = uuid.uuid4()
+    other_headers = {"Authorization": f"Bearer {make_token(other_id)}"}
+    mine = {str(world[k]) for k in ("p_web", "p_data", "p_sec", "u_web", "u_data")}
+
+    from scripts.fake_provider import FakeLLMProvider
+    from src.worker.handlers import handle_project_identity
+
+    foreign = uuid.uuid4()
+    async with TestingSessionLocal() as s:
+        await handle_project_identity(
+            {
+                "tenant_id": str(other_id),
+                "project_id": str(foreign),
+                "payload": {
+                    "name": WEB[0],
+                    "description": WEB[1],
+                    "tags": WEB[2],
+                    "visibility": "PUBLIC",
+                },
+            },
+            s,
+            FakeLLMProvider(),
+        )
+        await s.commit()
+    try:
+        r = await client.get(
+            f"/api/v1/matchmaking/users/{world['u_web']}/projects", headers=other_headers
+        )
+        assert r.status_code == 200
+        returned = {i["id"] for i in r.json()}
+        assert returned.isdisjoint(mine)  # jamais de projet du tenant A
+        trending = await client.get("/api/v1/matchmaking/trending", headers=other_headers)
+        assert {i["id"] for i in trending.json()}.isdisjoint(mine)
+        # et réciproquement : le tenant A ne voit pas le projet étranger
+        r = await client.get(
+            "/api/v1/matchmaking/trending",
+            headers={"Authorization": f"Bearer {make_token(seeder.tenant_id)}"},
+        )
+        assert str(foreign) not in {i["id"] for i in r.json()}
+    finally:
+        from sqlalchemy import text
+
+        async with TestingSessionLocal() as s:
+            await s.execute(text("DELETE FROM embeddings WHERE tenant_id = :t"), {"t": other_id})
+            await s.commit()

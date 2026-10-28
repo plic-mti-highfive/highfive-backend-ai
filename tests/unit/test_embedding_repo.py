@@ -73,3 +73,56 @@ async def test_rls_isolation(db_session: AsyncSession):
     fetched = await repo2.get_by_entity(entity_id=entity_id)
 
     assert fetched is None, "RLS failed: Tenant 2 should not be able to read Tenant 1's data!"
+
+
+@pytest.mark.asyncio
+async def test_update_replaces_vector_and_metadata(db_session: AsyncSession, test_tenant_id):
+    entity_id = uuid.uuid4()
+    await set_tenant_context(db_session, test_tenant_id)
+    repo = EmbeddingRepository(db_session, test_tenant_id)
+    await repo.create(EntityType.USER, entity_id, [0.1] * 1536, VectorPurpose.IDENTITY, {"a": 1})
+
+    updated = await repo.update(entity_id, VectorPurpose.IDENTITY, [0.2] * 1536, {"b": 2})
+
+    assert updated.payload_metadata == {"b": 2}
+    assert updated.vector_data[0] == pytest.approx(0.2)
+    fetched = await repo.get_by_entity_and_purpose(entity_id, VectorPurpose.IDENTITY)
+    assert fetched.payload_metadata == {"b": 2}
+
+
+@pytest.mark.asyncio
+async def test_update_unknown_embedding_raises(db_session: AsyncSession, test_tenant_id):
+    await set_tenant_context(db_session, test_tenant_id)
+    repo = EmbeddingRepository(db_session, test_tenant_id)
+    with pytest.raises(ValueError, match="not found"):
+        await repo.update(uuid.uuid4(), VectorPurpose.IDENTITY, [0.2] * 1536, {})
+
+
+@pytest.mark.asyncio
+async def test_get_all_returns_only_current_tenant(db_session: AsyncSession, test_tenant_id):
+    other_tenant = uuid.uuid4()
+    await set_tenant_context(db_session, test_tenant_id)
+    mine = EmbeddingRepository(db_session, test_tenant_id)
+    theirs = EmbeddingRepository(db_session, other_tenant)
+    ids = {uuid.uuid4(), uuid.uuid4()}
+    for eid in ids:
+        await mine.create(EntityType.USER, eid, [0.1] * 1536, VectorPurpose.IDENTITY, {})
+    await theirs.create(EntityType.USER, uuid.uuid4(), [0.1] * 1536, VectorPurpose.IDENTITY, {})
+
+    assert {e.entity_id for e in await mine.get_all()} == ids
+    assert await EmbeddingRepository(db_session, uuid.uuid4()).get_all() == []
+
+
+@pytest.mark.asyncio
+async def test_get_by_entity_ignores_other_tenant(db_session: AsyncSession, test_tenant_id):
+    entity_id = uuid.uuid4()
+    await set_tenant_context(db_session, test_tenant_id)
+    await EmbeddingRepository(db_session, test_tenant_id).create(
+        EntityType.USER, entity_id, [0.1] * 1536, VectorPurpose.IDENTITY, {}
+    )
+    stranger = EmbeddingRepository(db_session, uuid.uuid4())
+    assert await stranger.get_by_entity(entity_id) is None
+    assert await stranger.get_by_entity_and_purpose(entity_id, VectorPurpose.IDENTITY) is None
+    assert await stranger.find_nearest_neighbors(
+        [0.1] * 1536, EntityType.USER, VectorPurpose.IDENTITY
+    ) == []
