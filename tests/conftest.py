@@ -4,11 +4,26 @@ from unittest.mock import AsyncMock
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from src.core.config import settings
 from src.core.nlp_processor import NLPManager
+
+
+def _database_name(uri: str) -> str:
+    return make_url(uri).database or ""
+
+
+if "test" not in _database_name(settings.DATABASE_URI).lower():
+    pytest.exit(
+        "Refus de lancer les tests : la base de DATABASE_URI "
+        f"({_database_name(settings.DATABASE_URI)!r}) ne contient pas 'test'. Les tests "
+        "d'intégration écrivent dans la base : utilise `scripts/test.sh` (bases jetables) "
+        "ou pointe DATABASE_URI vers une base dédiée (ex. highfive_test).",
+        returncode=2,
+    )
 
 engine = create_async_engine(settings.DATABASE_URI, echo=False, poolclass=NullPool)
 TestingSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

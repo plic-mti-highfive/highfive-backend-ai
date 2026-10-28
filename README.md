@@ -103,13 +103,29 @@ python -m src.worker.cli
 
 | Commande                      | Description                           |
 | ----------------------------- | ------------------------------------- |
-| `pytest`                      | Lancer les tests                      |
+| `scripts/test.sh`             | **Tests sur bases jetables** (recommandé, voir ci-dessous) |
+| `pytest`                      | Lancer les tests (exige une base dont le nom contient `test`) |
 | `pytest --cov`                | Tests avec coverage report            |
 | `pytest tests/unit`           | Tests unitaires uniquement            |
 | `pytest tests/integration`    | Tests d'intégration uniquement        |
 | `locust -f load/locustfile.py` | Test de charge (voir [load/README.md](load/README.md)) |
 | `ruff check src`              | Lint                                  |
 | `ruff format src`             | Format                                |
+
+#### Tests : bases jetables
+
+Les tests d'intégration écrivent dans PostgreSQL (pgvector) et utilisent Redis. Pour ne jamais
+toucher une base de développement, `scripts/test.sh [args pytest]` :
+
+1. démarre `pgvector/pgvector:pg16` (base `highfive_test`, tmpfs) et `redis:7-alpine` sur des ports
+   locaux aléatoires (conteneurs `hf-ai-test-*`) ;
+2. exporte l'environnement, applique `alembic upgrade head`, lance `pytest` ;
+3. supprime les conteneurs à la fin (`trap`, y compris échec ou Ctrl-C).
+
+Si `DATABASE_URI` est déjà défini (CI), aucun conteneur n'est démarré. Garde-fou : `tests/conftest.py`
+refuse de s'exécuter si le nom de la base de `DATABASE_URI` ne contient pas `test`.
+Exemples : `scripts/test.sh tests/unit -q`, `scripts/test.sh --cov=src --cov-report=term`.
+Le détail des scénarios est dans [docs/CAHIER-DE-TESTS.md](docs/CAHIER-DE-TESTS.md).
 
 ### Migrations et Base de données
 
