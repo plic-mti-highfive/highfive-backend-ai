@@ -28,7 +28,7 @@ jobs:
         env:
           POSTGRES_USER: admin
           POSTGRES_PASSWORD: admin
-          POSTGRES_DB: highfive
+          POSTGRES_DB: highfive_test
         ports:
           - 5432:5432
         options: >-
@@ -65,22 +65,25 @@ jobs:
         run: uv run python -m spacy download fr_core_news_sm
 
       - name: Run linter
-        run: uv run ruff check src/ --fix
+        run: uv run ruff check src/
 
       - name: Apply Database Migrations
         run: uv run alembic upgrade head
         env:
           ENVIRONMENT: testing
           JWT_SECRET: secret_key
-          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive_test
           OPENAI_API_KEY: dummy_key
 
-      - name: Run tests and generate JUnit report
-        run: uv run pytest --junit-xml=junit.xml --cov=src --cov-report=xml
+      - name: Run tests (JUnit + coverage XML/HTML)
+        run: >-
+          uv run pytest --junit-xml=junit.xml
+          --cov=src --cov-report=xml --cov-report=html --cov-report=term
         env:
           ENV: dev
+          ENVIRONMENT: testing
           JWT_SECRET: secret_key
-          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
+          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive_test
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: 6379
           OPENAI_API_KEY: dummy_key
@@ -92,16 +95,6 @@ jobs:
           name: Pytest Test Results
           path: "junit.xml"
           reporter: jest-junit
-
-      - name: Generate coverage report
-        run: uv run pytest --cov=src --cov-report=html --cov-report=term
-        env:
-          ENV: dev
-          JWT_SECRET: secret-de-test
-          DATABASE_URI: postgresql+asyncpg://admin:admin@127.0.0.1:5432/highfive
-          REDIS_HOST: 127.0.0.1
-          REDIS_PORT: 6379
-          OPENAI_API_KEY: dummy_key
 
       - name: Upload coverage as artifact
         uses: actions/upload-artifact@v4
